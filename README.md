@@ -1,33 +1,6 @@
 # Violet
 The Violet chess engine
 
-Contents
-Violet Overview and Language	2
-Data structures	3
-Board	3
-General Moves	3
-Utilities	4
-Count	4
-Find	4
-Move Generation	5
-Attacks	6
-Evaluation	7
-Search	8
-Quisessence search	9
-Things that don't work	10
-Null Move	10
-Hash Table	10
-Deep	11
-Complier Optimization	12
-Time Control	13
-LMR	14
-Game Control	15
-Interface notes	16
-Opening book	17
-Table Bases	18
-Test suites	19
-
-
 Violet Overview and Language
 
 Violet is a program written by Dr. Jay Lindgren starting on 9/2/2003.  The reason for undertaking such an endeavor is that it is a cheap and entertaining hobby that can be engaged while traveling for business or wait for children at activities.  I am writing this introduction on what is about the 10th anniversary of my starting to write Violet.  A few tidbits:
