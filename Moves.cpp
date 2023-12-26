@@ -4633,6 +4633,7 @@ void ComputerMove( struct Board * argsBoard,
    gofDebugMoves << "Hash after move = " << GetHash() << endl;  
 
    // Do special cases for the console
+   /*
    if ( GetInterfaceMode() == dConsole )
    {
 
@@ -4669,6 +4670,7 @@ void ComputerMove( struct Board * argsBoard,
       }
 
    }
+   */
 
    // Reset some search parameters.
    argsBoard->iNumberOfPlys = -1;
