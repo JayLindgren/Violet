@@ -124,7 +124,6 @@ The parameters for when to just out of the book is in “define.h”.  For examp
 I have not read the opening book, nor do I have the chess skills to do a good job of analyzing it.  I just hope I hop out of the lines soon enough.
 Table Bases
 
-Not implemented yet.
 Test suites
 
 There are several suites of chess problems that Violet can run over.  Testing with and without new features allows the following:
