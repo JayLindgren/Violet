@@ -1,3 +1,7 @@
+
+#ifndef STRUCTURES_H
+#define STRUCTURES_H
+
 // Copyright 2006 by Jay Lindgren. All Rights Reserved.
 //
 #include <time.h>
@@ -267,6 +271,11 @@ struct SearchParameters
    // before pruning.  Similar to Crafty.
    int iPruningSchedule[ 10 ];
 };
+
+// Extern declaration for the global instance of SearchParameters
+// This tells other files that gsSearchParameters exists somewhere.
+// =========================================================================
+extern SearchParameters gsSearchParameters;
 
 struct Move 
 {
@@ -597,3 +606,5 @@ struct Tempus
    int iNumberOfNodesSearched;
 
 };
+
+#endif // STRUCTURES_H

@@ -1,7 +1,11 @@
+#ifndef FUNCTIONS_H
+#define FUNCTIONS_H
+
 // Copyright 2006 by Jay Lindgren. All Rights Reserved.
 //
 //#include <fstream>
 #include "Definitions.h"
+
 
 ///////////////////////////////////////////////////////////////////////////
 // BitBoard.cpp functions.
@@ -220,6 +224,16 @@ int GetMoveNumberFast( struct Board * argsBoard,
 // Function in Search.cpp
 /////////////////////////////////////////////////////////////////////
 
+int SearchMove(Board* argsBoard,
+   GeneralMove* argsGeneralMoves,
+   Move* vsMoveList,
+   int iMoveIndex,
+   int& argiAlpha, // Pass alpha by reference to update it
+   int argiBeta,
+   int iMoveCount, // The index in the sorted move list (0 for best move)
+   int* viMoveScores,
+   int& siHaveMove);
+
 void InitializeSearch();
 
 int GetReductionElement( int argiDepth,
@@ -274,41 +288,6 @@ int LookForSearchExtensions( struct Board * argsBoard,
                              int iMoveNumber,
                              int iNewCheck );
 
-// Order the moves the search looking for a cut off.
-void SortMoves( int * argvsiMoveOrder,
-                struct Move * argvsMoveList,
-                int argNumberOfMoves );
-
-// Sort the moves based on what is found in the hash table.
-void SortMovesHash( int * argvsiMoveOrder,
-                    struct Move * argvsMoveList,
-                    int argNumberOfMoves,
-                    struct Board * argsBoard,
-                    struct GeneralMove * argsGeneralMoves,
-                    int * viScores );
-
-int QSortMoves( int * argvsiMoveOrder,
-                struct Move * argvsMoveList,
-                int argNumberOfMoves );
-
-// Reset the history heurisic
-void ResetHistoryHeuristic();
-
-void UpdateHH( struct Board * argsBoard,
-               struct Move * argsMove );
-
-int  UpdateScoreHH( struct Move * argsMove,
-                    struct GeneralMove * argsGeneralMoves );
-
-void ResetKillerMoves();
-
-void UpdateKillerMoves( struct Board * argsBoard,
-                        struct Move * argsMove );
-
-int  UpdateScoreKillerMoves( struct Board * argsBoard,
-                             struct Move * argsMove,
-                             struct GeneralMove * argsGeneralMoves );
-
 // See if we should do the null search.
 int DoNullSearch( struct Board * argsBoard,
                   struct GeneralMove * argsGeneralMoves,
@@ -326,6 +305,53 @@ int DoLMRSearch( int * viScore,
 // Look for check and stale mates
 int LookForCheckAndStale( struct Board * argsBoard,
                           struct GeneralMove * argsGeneralMoves );
+
+//================================================================================
+// Function Declarations for Move Ordering
+//================================================================================
+#ifndef MOVEORDER_H
+#define MOVEORDER_H
+
+// Forward declare structs to avoid circular dependencies if needed,
+// or include the necessary headers directly.
+#include "Structures.h"
+
+//================================================================================
+// Function Declarations for Move Ordering
+//================================================================================
+
+// Main sorting function using heuristics
+void SortMovesHash(int* argvsiMoveOrder,
+   Move* argvsMoveList,
+   int argiNumberOfMoves,
+   Board* argsBoard,
+   GeneralMove* argsGeneralMoves,
+   int* viScore);
+
+// Simple move sorting (used by Quiescence Search)
+void SortMoves(int* argvsiMoveOrder,
+   Move* argvsMoveList,
+   int argNumberOfMoves);
+
+// Q-search sorting that only keeps captures
+int QSortMoves(int* argvsiMoveOrder,
+   Move* argvsMoveList,
+   int argNumberOfMoves);
+
+// --- Heuristic Management ---
+
+// History Heuristic
+void ResetHistoryHeuristic();
+void UpdateHH(Board* argsBoard, Move* argsMove);
+int UpdateScoreHH(Move* argsMove, GeneralMove* argsGeneralMoves);
+
+// Killer Moves
+void ResetKillerMoves();
+void UpdateKillerMoves(Board* argsBoard, Move* argsMove);
+int UpdateScoreKillerMoves(Board* argsBoard, Move* argsMove, GeneralMove* argsGeneralMoves);
+
+
+#endif // MOVEORDER_H
 
 ///////////////////////////////////////////////////////////////////////
 // Hash functions
@@ -514,7 +540,8 @@ void SetMoveTime(                 int iTime );
 void SetWhiteIncrementalTime(     int iTime );
 void SetWhiteTime(                int iTime );
 void SetMovesToGo(                int iMovesToGo );
-void SetNodes(                    int iNodes );
+//void SetNodes(                    int iNodes );
+void SetNodes(long long nodes);
 void SetMate(                     int iMate );
 void SetInterfaceDebug(           int iTogel );
 void SetNumberOfNodes(            BitBoard iNodes );
@@ -573,7 +600,8 @@ int GetMoveTime();
 int GetWhiteIncrementalTime();
 int GetWhiteTime();
 int GetMovesToGo();
-int GetNodes();
+//int GetNodes();
+long long GetNodes();
 int GetMate();
 int GetInterfaceDebug();
 int GetStart();
@@ -744,18 +772,24 @@ void CreateRandomKeyFile();
 ///////////////////////////////////////////////////////////////////////////////
 // Function in FrontEndInterface.cpp
 ////////////////////////////////////////////////////////////////////////////////
+#include <string> // Make sure to add this include at the top of your header file
 
+void CommandFromInterface(std::string argstrCommand, struct Board* argsBoard, struct GeneralMove* argsGeneralMoves);
+void PositionCommand(std::string argstrCommand, struct Board* argsBoard, struct GeneralMove* argsGeneralMoves);
+void GoCommand(std::string argstrCommand, struct Board* argsBoard, struct GeneralMove* argsGeneralMoves);
 // Initialize the communications.
 void InitializeCommunications();
+
+void SetNodes(long long nodes);
 
 // Here is the main communications funciton.
 void ReadInputAndExecute( struct Board * argsBoard,
                           struct GeneralMove * argsGeneralMove );
 
 // Execute a UCI command.
-void CommandFromInterface( char * argstrCommand,
-                           struct Board * argstrBoard,
-                           struct GeneralMove * argsGeneralMoves );
+//void CommandFromInterface( char * argstrCommand,
+//                           struct Board * argstrBoard,
+//                           struct GeneralMove * argsGeneralMoves );
 
 // Send a command to the interface with an eol included.
 extern void SendCommand( const char * argstrCommand );
@@ -764,14 +798,14 @@ extern void SendCommand( const char * argstrCommand );
 extern void event ();
 
 // Parse through and act on a "parse" command from UCI.
-void PositionCommand( char * argstrCommand,
-                      struct Board * argsBoard,
-                      struct GeneralMove * argsGeneralMoves );
+//void PositionCommand( char * argstrCommand,
+//                      struct Board * argsBoard,
+//                      struct GeneralMove * argsGeneralMoves );
 
 // Parse through a "go" command the execute.
-void GoCommand( char * argstrCommand,
-                struct Board * argsBoard,
-                struct GeneralMove * argsGeneralMoves );
+//void GoCommand( char * argstrCommand,
+//                struct Board * argsBoard,
+//                struct GeneralMove * argsGeneralMoves );
 
 // See if there is something in the pipe.
 int CheckForInput();
@@ -786,3 +820,5 @@ void CloseCommunications();
 
 void TuneMoveParameters( struct Board * argsBoard,
                          struct GeneralMove * argsGeneralMoves );
+
+#endif // FUNCTIONS_H

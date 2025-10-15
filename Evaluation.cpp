@@ -1,6 +1,7 @@
 // Copyright 2006 by Jay Lindgren. All Rights Reserved.
 //
 
+#define _CRT_SECURE_NO_WARNINGS
 #include <iostream>
 #include <stdlib.h>
 #include "Functions.h"
@@ -10,100 +11,6 @@
 using namespace std;
 
 Evaluator gsEvaluator;
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////
-// Define some evaluation parameters
-///////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// Define the doubled pawn score. - Note, these score get counted twice (one for each pawn).
-# define dDoubleCol1 10
-# define dDoubleCol2 10
-# define dDoubleCol3 10
-# define dDoubleCol4 10
-# define dDoubleCol5 10
-# define dDoubleCol6 10
-# define dDoubleCol7 10
-# define dDoubleCol8 10
-
-// Define the piece values.
-# define dValuePawnOpening     100
-# define dValueRookOpening     500
-# define dValueKnightOpening   325
-# define dValueBishopOpening   325
-# define dValueQueenOpening    900
-# define dValueKingOpening    9999
-
-# define dValuePawnEndGame     100
-# define dValueRookEndGame     500
-# define dValueKnightEndGame   325
-# define dValueBishopEndGame   325
-# define dValueQueenEndGame    901
-# define dValueKingEndGame    9999
-
-// Define some phase numbers.
-# define dPhasePawn   1
-# define dPhaseKnight 10
-# define dPhaseBishop 10
-# define dPhaseRook   20
-# define dPhaseQueen  40
-
-// Defind the maximum phase
-// Max Phase = 16 * 1 + 4 * 20 + 4 * 10 + 4 * 10 + 2 * 40
-# define dMaxPhase 256
-
-// Define penality for not casteling :
-# define dNoCastlePenality 20
-
-// Define the score for one square of mobility.
-# define dMobilityScore 4
-
-// Mobility in the opening.
-# define dMobilityKnightOpening 4
-# define dMobilityBishopOpening 5
-# define dMobiltiyRookOpening   2
-# define dMobilityQueenOpening  1
-# define dMobilityKingOpening   0
-
-// Mobility in the end game.
-# define dMobilityKnightEndGame 4
-# define dMobilityBishopEndGame 5
-# define dMobiltiyRookEndGame   4
-# define dMobilityQueenEndGame  1
-# define dMobilityKingEndGame   0
-
-
-// Define the bonus for having a double bishop
-# define dBishopPair 25 
-
-// King safety, king potential attack.
-// This is be counted if a piece can potentially attack the king from
-// from their current square.
-//# define dKingOpaqueAttack 2
-# define dKingOpaqueAttack 1
-
-// The value of having a king fence.
-# define dKingFence 15
-
-// Define the value of a draw, a contempt for draw maybe placed here.
-# define dDrawValue 0
-
-// Define the value of a passed pawn
-// And the value of a passed pawn but blocked.
-# define dPassedPawnIntercept 10
-# define dPassedPawnSlope 10
-# define dPassedPawnBlocked
-# define dIsolatedPawn 10
-# define dDoubledPawn
-
-// Add in for rooks on open and semi open files.
-# define dRookOnSemiOpenFileOpening     10
-# define dRookOnOpenFileOpening         20
-# define dRookOnSemiOpenKingFileOpening 10
-# define dRookOnOpenKingFileOpening     20
-# define dRookOnSemiOpenFileEndGame     10
-# define dRookOnOpenFileEndGame         20
-# define dRookOnSemiOpenKingFileEndGame 10
-# define dRookOnOpenKingFileEndGame     20
 
 // Evaluate a position.
 //
@@ -1641,17 +1548,17 @@ int EvaluateNull( struct Board * argsBoard,
    int iScore = 0;
 
    // Add the pieces as appropriate
-   iScore += Count( argsBoard->bbWhitePawn )   * dValuePawnOpening;
-   iScore += Count( argsBoard->bbWhiteRook )   * dValueRookOpening;
-   iScore += Count( argsBoard->bbWhiteKnight ) * dValueKnightOpening;
-   iScore += Count( argsBoard->bbWhiteBishop ) * dValueBishopOpening;
-   iScore += Count( argsBoard->bbWhiteQueen )  * dValueQueenOpening;
+   iScore += (int)Count( argsBoard->bbWhitePawn )   * dValuePawnOpening;
+   iScore += (int)Count( argsBoard->bbWhiteRook )   * dValueRookOpening;
+   iScore += (int)Count( argsBoard->bbWhiteKnight ) * dValueKnightOpening;
+   iScore += (int)Count( argsBoard->bbWhiteBishop ) * dValueBishopOpening;
+   iScore += (int)Count( argsBoard->bbWhiteQueen )  * dValueQueenOpening;
 
-   iScore -= Count( argsBoard->bbBlackPawn )   * dValuePawnOpening;
-   iScore -= Count( argsBoard->bbBlackRook )   * dValueRookOpening;
-   iScore -= Count( argsBoard->bbBlackKnight ) * dValueKnightOpening;
-   iScore -= Count( argsBoard->bbBlackBishop ) * dValueBishopOpening;
-   iScore -= Count( argsBoard->bbBlackQueen )  * dValueQueenOpening;
+   iScore -= (int)Count( argsBoard->bbBlackPawn )   * dValuePawnOpening;
+   iScore -= (int)Count( argsBoard->bbBlackRook )   * dValueRookOpening;
+   iScore -= (int)Count( argsBoard->bbBlackKnight ) * dValueKnightOpening;
+   iScore -= (int)Count( argsBoard->bbBlackBishop ) * dValueBishopOpening;
+   iScore -= (int)Count( argsBoard->bbBlackQueen )  * dValueQueenOpening;
 
    // Return the standard score.
    if ( argsBoard->siColorToMove == dBlack )

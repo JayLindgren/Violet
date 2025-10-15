@@ -9,7 +9,7 @@
    #include <crtdbg.h>
 //*/
 
-
+#define _CRT_SECURE_NO_WARNINGS
 #include <iostream>
 #include <stdlib.h>
 #include <fstream>
@@ -18,6 +18,7 @@
 #include "Definitions.h"
 #include "Functions.h"
 #include "Structures.h"
+#include <intrin.h> // For MSVC
 using namespace std;
 
 
@@ -121,925 +122,33 @@ void CreateBoard( struct Board * argsBoard,
 //
 //--------------------------------------------------------------------
 //
-BitBoard Count( BitBoard bbBoard ) 
+BitBoard Count(BitBoard bbBoard) 
 {
-   // This function finds the number of non-zeros bits.
-   //
-   
-   // Look for a zero.
-   if ( bbBoard == 0 )
-   {
-   
-      return 0;
-      
-   }
-
-	// Use a hacking trick, "Hacker's Delight", by Hank Warren
-	// Start dividing the groups in to two and count.
-	bbBoard = ( ( bbBoard & 0xAAAAAAAAAAAAAAAA ) >> 1  ) + ( bbBoard & 0x5555555555555555 );
-	bbBoard = ( ( bbBoard & 0xCCCCCCCCCCCCCCCC ) >> 2  ) + ( bbBoard & 0x3333333333333333 );
-	bbBoard = ( ( bbBoard & 0xF0F0F0F0F0F0F0F0 ) >> 4  ) + ( bbBoard & 0x0F0F0F0F0F0F0F0F );
-	bbBoard = ( ( bbBoard & 0xFF00FF00FF00FF00 ) >> 8  ) + ( bbBoard & 0x00FF00FF00FF00FF );
-	bbBoard = ( ( bbBoard & 0xFFFF0000FFFF0000 ) >> 16 ) + ( bbBoard & 0x0000FFFF0000FFFF );
-	bbBoard = ( ( bbBoard & 0xFFFFFFFF00000000 ) >> 32 ) + ( bbBoard & 0x00000000FFFFFFFF );
-
-   // Debugging
-   assert( bbBoard > 0 );
-    
-   return bbBoard;
-    
+   return __popcnt64(bbBoard);
 }
 
+
+
 //
-//---------------------------------------------------------------------
-//
+//--------------------------------------------------------------------
+// 
 int Find( BitBoard bbBoard, 
-          int * vPosition,
-          struct GeneralMove * argsGeneralMoves )
+          int* vPosition, 
+          struct GeneralMove* argsGeneralMoves) 
 {
-// This function finds the non-zero bit.
-
-   // Debugging.
-   assert( bbBoard >= 0 );
-   assert( vPosition >= 0 );
-   assert( argsGeneralMoves >= 0 );
-
-   // Do some debugging.
-   assert( bbBoard >= 0 );
-         
-   BitBoard bbSubSearch;
    int siCount = 0;
+   unsigned long index;
 
-   if ( bbBoard == 0 )
+   // This function finds the non-zero bits.
+   while (_BitScanForward64(&index, bbBoard)) 
    {
-
-     return siCount;
-
+      vPosition[siCount++] = index;
+      bbBoard &= bbBoard - 1; // Clear the LSB
    }
-
-   // Look for pieces on the upper half of the board.
-   if ( bbBoard & argsGeneralMoves->bbLowerHalf )
-   {
-
-      if ( bbBoard & argsGeneralMoves->bbFirstQuarter )
-      {
-
-         bbSubSearch = argsGeneralMoves->bbCol1 & bbBoard;
-
-         if( ( bbSubSearch ) > 0 )
-         {
-            
-            // Look on the left hand side of the board.
-            if ( argsGeneralMoves->bbLeftHalf & bbSubSearch )
-            {
-
-               // Look for the near left hand side.
-               if ( argsGeneralMoves->bbNearLeft & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow1 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 0;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow2 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 1;
-                     siCount++;
-
-                  }
-
-               }
-
-               // Look for the far left hand side.
-               if ( argsGeneralMoves->bbFarLeft & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow3 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 2;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow4 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 3;
-                     siCount++;
-
-                  }
-
-               }
-
-            }
-
-            // Look for the right hand side of the board.
-            if ( argsGeneralMoves->bbRightHalf & bbSubSearch )
-            {
-
-               // Look for the near right hand side.
-               if ( argsGeneralMoves->bbNearRight & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow5 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 4;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow6 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 5;
-                     siCount++;
-
-                  }
-
-               }
-
-               // Look for the far right hand side.
-               if ( argsGeneralMoves->bbFarRight & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow7 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 6;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow8 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 7;
-                     siCount++;
-
-                  }
-
-               }
-
-            }
-        
-         }
-
-         bbSubSearch = argsGeneralMoves->bbCol2 & bbBoard;
-
-         if( ( bbSubSearch ) > 0 )
-         {
-            
-            // Look on the left hand side of the board.
-            if ( argsGeneralMoves->bbLeftHalf & bbSubSearch )
-            {
-
-               // Look for the near left hand side.
-               if ( argsGeneralMoves->bbNearLeft & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow1 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 8;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow2 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 9;
-                     siCount++;
-
-                  }
-
-               }
-
-               // Look for the far left hand side.
-               if ( argsGeneralMoves->bbFarLeft & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow3 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 10;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow4 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 11;
-                     siCount++;
-
-                  }
-
-               }
-
-            }
-
-            // Look for the right hand side of the board.
-            if ( argsGeneralMoves->bbRightHalf & bbSubSearch )
-            {
-
-               // Look for the near right hand side.
-               if ( argsGeneralMoves->bbNearRight & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow5 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 12;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow6 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 13;
-                     siCount++;
-
-                  }
-
-               }
-
-               // Look for the far right hand side.
-               if ( argsGeneralMoves->bbFarRight & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow7 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 14;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow8 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 15;
-                     siCount++;
-
-                  }
-
-               }
-
-            }
-        
-         }
-
-      }
-
-      if ( bbBoard & argsGeneralMoves->bbSecondQuarter )
-      {
-
-         bbSubSearch = argsGeneralMoves->bbCol3 & bbBoard;
-
-         if( ( bbSubSearch ) > 0 )
-         {
-            
-            // Look on the left hand side of the board.
-            if ( argsGeneralMoves->bbLeftHalf & bbSubSearch )
-            {
-
-               // Look for the near left hand side.
-               if ( argsGeneralMoves->bbNearLeft & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow1 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 16;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow2 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 17;
-                     siCount++;
-
-                  }
-
-               }
-
-               // Look for the far left hand side.
-               if ( argsGeneralMoves->bbFarLeft & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow3 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 18;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow4 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 19;
-                     siCount++;
-
-                  }
-
-               }
-
-            }
-
-            // Look for the right hand side of the board.
-            if ( argsGeneralMoves->bbRightHalf & bbSubSearch )
-            {
-
-               // Look for the near right hand side.
-               if ( argsGeneralMoves->bbNearRight & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow5 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 20;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow6 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 21;
-                     siCount++;
-
-                  }
-
-               }
-
-               // Look for the far right hand side.
-               if ( argsGeneralMoves->bbFarRight & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow7 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 22;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow8 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 23;
-                     siCount++;
-
-                  }
-
-               }
-
-            }
-        
-         }
-
-         bbSubSearch = argsGeneralMoves->bbCol4 & bbBoard;
-
-         if( ( bbSubSearch ) > 0 )
-         {
-            
-            // Look on the left hand side of the board.
-            if ( argsGeneralMoves->bbLeftHalf & bbSubSearch )
-            {
-
-               // Look for the near left hand side.
-               if ( argsGeneralMoves->bbNearLeft & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow1 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 24;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow2 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 25;
-                     siCount++;
-
-                  }
-
-               }
-
-               // Look for the far left hand side.
-               if ( argsGeneralMoves->bbFarLeft & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow3 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 26;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow4 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 27;
-                     siCount++;
-
-                  }
-
-               }
-
-            }
-
-            // Look for the right hand side of the board.
-            if ( argsGeneralMoves->bbRightHalf & bbSubSearch )
-            {
-
-               // Look for the near right hand side.
-               if ( argsGeneralMoves->bbNearRight & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow5 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 28;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow6 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 29;
-                     siCount++;
-
-                  }
-
-               }
-
-               // Look for the far right hand side.
-               if ( argsGeneralMoves->bbFarRight & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow7 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 30;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow8 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 31;
-                     siCount++;
-
-                  }
-
-               }
-
-            }
-        
-         }
-
-      }
-
-   }
-
-   if ( bbBoard & argsGeneralMoves->bbUpperHalf )
-   {
-
-      if ( bbBoard & argsGeneralMoves->bbThirdQuarter )
-      {
-
-         bbSubSearch = argsGeneralMoves->bbCol5 & bbBoard;
-
-         if( ( bbSubSearch ) > 0 )
-         {
-            
-            // Look on the left hand side of the board.
-            if ( argsGeneralMoves->bbLeftHalf & bbSubSearch )
-            {
-
-               // Look for the near left hand side.
-               if ( argsGeneralMoves->bbNearLeft & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow1 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 32;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow2 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 33;
-                     siCount++;
-
-                  }
-
-               }
-
-               // Look for the far left hand side.
-               if ( argsGeneralMoves->bbFarLeft & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow3 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 34;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow4 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 35;
-                     siCount++;
-
-                  }
-
-               }
-
-            }
-
-            // Look for the right hand side of the board.
-            if ( argsGeneralMoves->bbRightHalf & bbSubSearch )
-            {
-
-               // Look for the near right hand side.
-               if ( argsGeneralMoves->bbNearRight & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow5 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 36;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow6 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 37;
-                     siCount++;
-
-                  }
-
-               }
-
-               // Look for the far right hand side.
-               if ( argsGeneralMoves->bbFarRight & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow7 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 38;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow8 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 39;
-                     siCount++;
-
-                  }
-
-               }
-
-            }
-        
-         }
-
-         bbSubSearch = argsGeneralMoves->bbCol6 & bbBoard;
-
-         if( ( bbSubSearch ) > 0 )
-         {
-            
-            // Look on the left hand side of the board.
-            if ( argsGeneralMoves->bbLeftHalf & bbSubSearch )
-            {
-
-               // Look for the near left hand side.
-               if ( argsGeneralMoves->bbNearLeft & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow1 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 40;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow2 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 41;
-                     siCount++;
-
-                  }
-
-               }
-
-               // Look for the far left hand side.
-               if ( argsGeneralMoves->bbFarLeft & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow3 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 42;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow4 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 43;
-                     siCount++;
-
-                  }
-
-               }
-
-            }
-
-            // Look for the right hand side of the board.
-            if ( argsGeneralMoves->bbRightHalf & bbSubSearch )
-            {
-
-               // Look for the near right hand side.
-               if ( argsGeneralMoves->bbNearRight & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow5 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 44;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow6 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 45;
-                     siCount++;
-
-                  }
-
-               }
-
-               // Look for the far right hand side.
-               if ( argsGeneralMoves->bbFarRight & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow7 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 46;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow8 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 47;
-                     siCount++;
-
-                  }
-
-               }
-
-            }
-        
-         }
-
-      }
-
-      if ( bbBoard & argsGeneralMoves->bbFourthQuarter )
-      {
-
-         bbSubSearch = argsGeneralMoves->bbCol7 & bbBoard;
-
-         if( ( bbSubSearch ) > 0 )
-         {
-            
-            // Look on the left hand side of the board.
-            if ( argsGeneralMoves->bbLeftHalf & bbSubSearch )
-            {
-
-               // Look for the near left hand side.
-               if ( argsGeneralMoves->bbNearLeft & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow1 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 48;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow2 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 49;
-                     siCount++;
-
-                  }
-
-               }
-
-               // Look for the far left hand side.
-               if ( argsGeneralMoves->bbFarLeft & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow3 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 50;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow4 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 51;
-                     siCount++;
-
-                  }
-
-               }
-
-            }
-
-            // Look for the right hand side of the board.
-            if ( argsGeneralMoves->bbRightHalf & bbSubSearch )
-            {
-
-               // Look for the near right hand side.
-               if ( argsGeneralMoves->bbNearRight & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow5 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 52;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow6 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 53;
-                     siCount++;
-
-                  }
-
-               }
-
-               // Look for the far right hand side.
-               if ( argsGeneralMoves->bbFarRight & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow7 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 54;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow8 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 55;
-                     siCount++;
-
-                  }
-
-               }
-
-            }
-        
-         }
-
-         bbSubSearch = argsGeneralMoves->bbCol8 & bbBoard;
-
-         if( ( bbSubSearch ) > 0 )
-         {
-            
-            // Look on the left hand side of the board.
-            if ( argsGeneralMoves->bbLeftHalf & bbSubSearch )
-            {
-
-               // Look for the near left hand side.
-               if ( argsGeneralMoves->bbNearLeft & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow1 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 56;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow2 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 57;
-                     siCount++;
-
-                  }
-
-               }
-
-               // Look for the far left hand side.
-               if ( argsGeneralMoves->bbFarLeft & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow3 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 58;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow4 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 59;
-                     siCount++;
-
-                  }
-
-               }
-
-            }
-
-            // Look for the right hand side of the board.
-            if ( argsGeneralMoves->bbRightHalf & bbSubSearch )
-            {
-
-               // Look for the near right hand side.
-               if ( argsGeneralMoves->bbNearRight & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow5 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 60;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow6 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 61;
-                     siCount++;
-
-                  }
-
-               }
-
-               // Look for the far right hand side.
-               if ( argsGeneralMoves->bbFarRight & bbSubSearch )
-               {
-
-                  if ( argsGeneralMoves->bbRow7 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 62;
-                     siCount++;
-
-                  }
-                  if ( argsGeneralMoves->bbRow8 & bbSubSearch )
-                  {
-
-                     vPosition[ siCount ] = 63;
-                     siCount++;
-
-                  }
-
-               }
-
-            }
-        
-         }
-
-      }
-
-   }
-
-   // Some debugging.
-   assert( siCount >= 0 );
-   assert( siCount <= 64 );
-
-   // Return the count.
    return siCount;
-
 }
+
+
 
 //
 //----------------------------------------------------------------------
@@ -1768,7 +877,7 @@ int CheckBoard( struct Board * argsBoard )
       system("pause");
 
    }
-   if ( iWhiteRook > 3 )
+   if ( iWhiteRook > 10 )
    { 
 
       PrintBoard( argsBoard->mBoard );
@@ -1776,7 +885,7 @@ int CheckBoard( struct Board * argsBoard )
       system("pause");
 
    }
-   if ( iWhiteKnight > 3 )
+   if ( iWhiteKnight > 10 )
    { 
 
       PrintBoard( argsBoard->mBoard );
@@ -1784,7 +893,7 @@ int CheckBoard( struct Board * argsBoard )
       system("pause");
 
    }
-   if ( iWhiteBishop > 3 )
+   if ( iWhiteBishop > 10 )
    { 
 
       PrintBoard( argsBoard->mBoard );
@@ -1792,7 +901,7 @@ int CheckBoard( struct Board * argsBoard )
       system("pause");
 
    }
-   if ( iWhiteQueen > 2 )
+   if ( iWhiteQueen > 9 )
    { 
 
       PrintBoard( argsBoard->mBoard );
@@ -1824,7 +933,7 @@ int CheckBoard( struct Board * argsBoard )
       return 0;
 
    }
-   if ( iBlackRook > 3 )
+   if ( iBlackRook > 10 )
    { 
 
       PrintBoard( argsBoard->mBoard );
@@ -1832,7 +941,7 @@ int CheckBoard( struct Board * argsBoard )
       system("pause");
 
    }
-   if ( iBlackKnight > 3 )
+   if ( iBlackKnight > 10 )
    { 
 
       PrintBoard( argsBoard->mBoard );
@@ -1840,7 +949,7 @@ int CheckBoard( struct Board * argsBoard )
       system("pause");
 
    }
-   if ( iBlackBishop > 3 )
+   if ( iBlackBishop > 10 )
    { 
 
       PrintBoard( argsBoard->mBoard );
@@ -1848,7 +957,7 @@ int CheckBoard( struct Board * argsBoard )
       system("pause");
 
    }
-   if ( iBlackQueen > 2 )
+   if ( iBlackQueen > 9 )
    { 
 
       PrintBoard( argsBoard->mBoard );
@@ -2527,6 +1636,7 @@ void ReadFEN( const char strFileName[ 640 ],
    else // We have a square.
    {
 
+      // CJL - Is this right?  Gemini doesn't think so.
       int iSquare = int( str4[ 1 ] ) * 8 + ( int )str4[ 2 ] - 1;
       argsBoard->bbEP = SetBitToOne( argsBoard->bbEP, iSquare );
       argsBoard->sHistoryStack[ 0 ].bbEPSquare = SetBitToOne( argsBoard->sHistoryStack[ 0 ].bbEPSquare,
@@ -2579,6 +1689,13 @@ void ReadFEN( const char strFileName[ 640 ],
    // Set the initial ply to minus 1.
    argsBoard->iNumberOfPlys = -1;
 
+   // Ensure null-termination
+   str1[sizeof(str1) - 1] = '\0';
+   str2[sizeof(str2) - 1] = '\0';
+   str3[sizeof(str3) - 1] = '\0';
+   str4[sizeof(str4) - 1] = '\0';
+   str5[sizeof(str5) - 1] = '\0';
+   str6[sizeof(str6) - 1] = '\0';
 }
 
 //

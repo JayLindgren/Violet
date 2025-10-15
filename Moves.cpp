@@ -5,6 +5,7 @@
 // Both moves are needed in order to calculate casteling, check and checkmate.
 //
 
+#define _CRT_SECURE_NO_WARNINGS
 #include <iostream>
 #include <iomanip>
 #include <string.h>
@@ -20,9 +21,216 @@ using namespace std;
 ofstream gofDebugMoves;
 
 //
+//------------------------------------------------------------------------------------------------------------------------------------------------------------
+//
+void CalculateMoves(struct Move* argsMoves,
+   struct Board* argsBoard,
+   struct GeneralMove* argsGeneralMoves)
+{
+   // This is a controlling function.
+   //
+
+      // Debug the inputs.
+   assert(argsMoves >= 0);
+   assert(argsGeneralMoves >= 0);
+   assert(argsMoves >= 0);
+
+   // Initialize the counters.
+   argsBoard->siNumberOfMoves = 0;
+   argsBoard->bbWhiteAttack = 0;
+   argsBoard->bbWhiteMove = 0;
+   argsBoard->bbBlackAttack = 0;
+   argsBoard->bbBlackMove = 0;
+   argsBoard->bbWhiteKingMove = 0;
+   argsBoard->bbWhiteKingAttack = 0;
+   argsBoard->bbBlackKingMove = 0;
+   argsBoard->bbBlackKingAttack = 0;
+
+   // Calculate the moves for the pieces.
+
+   // Calculate for the white pieces.
+   if (argsBoard->siColorToMove == dWhite)
+   {
+
+      if (argsBoard->bbWhitePawn > 0)
+      {
+
+         CalculateWhitePawns(argsMoves,
+            argsBoard,
+            argsGeneralMoves);
+
+      }
+
+      if (argsBoard->bbWhiteKnight > 0)
+      {
+
+         CalculateWhiteKnights(argsMoves,
+            argsBoard,
+            argsGeneralMoves);
+
+      }
+
+      if (argsBoard->bbWhiteBishop > 0)
+      {
+
+         CalculateWhiteBishops(argsMoves,
+            argsBoard,
+            argsGeneralMoves);
+
+      }
+
+      if (argsBoard->bbWhiteRook > 0)
+      {
+
+         CalculateWhiteRooks(argsMoves,
+            argsBoard,
+            argsGeneralMoves);
+
+      }
+
+      if (argsBoard->bbWhiteQueen > 0)
+      {
+
+         CalculateWhiteQueens(argsMoves,
+            argsBoard,
+            argsGeneralMoves);
+
+      }
+
+      if (argsBoard->bbWhiteKing > 0)
+      {
+
+         CalculateWhiteKing(argsMoves,
+            argsBoard,
+            argsGeneralMoves);
+
+      }
+
+      // ========================== FIX START ==========================
+      // Before checking for castling, calculate the opponent's (Black's) attack map.
+      Move vsDummyMoveList[dNumberOfMoves];
+      int iOldNumberOfMoves = argsBoard->siNumberOfMoves;
+      BitBoard bbOldWhiteAttack = argsBoard->bbWhiteAttack; // Save White's attack map
+      BitBoard bbOldWhiteMove = argsBoard->bbWhiteMove;     // Save White's move map
+
+      argsBoard->siColorToMove = dBlack;
+      CalculateAttacks(vsDummyMoveList, argsBoard, argsGeneralMoves); // This calculates bbBlackAttack
+      argsBoard->siColorToMove = dWhite;
+
+      // Restore original state to avoid side-effects
+      argsBoard->bbWhiteAttack = bbOldWhiteAttack;
+      argsBoard->bbWhiteMove = bbOldWhiteMove;
+      argsBoard->siNumberOfMoves = iOldNumberOfMoves;
+      // =========================== FIX END ===========================
+
+
+      if (argsBoard->bbCastle > 0)
+      {
+
+         CastleWhite(argsMoves,
+            argsBoard,
+            argsGeneralMoves);
+
+      }
+
+   }
+
+   if (argsBoard->siColorToMove == dBlack)
+   {
+
+      if (argsBoard->bbBlackPawn > 0)
+      {
+
+         CalculateBlackPawns(argsMoves,
+            argsBoard,
+            argsGeneralMoves);
+
+      }
+
+      if (argsBoard->bbBlackKnight > 0)
+      {
+
+         CalculateBlackKnights(argsMoves,
+            argsBoard,
+            argsGeneralMoves);
+
+      }
+
+      if (argsBoard->bbBlackBishop > 0)
+      {
+
+         CalculateBlackBishops(argsMoves,
+            argsBoard,
+            argsGeneralMoves);
+
+      }
+
+      if (argsBoard->bbBlackRook > 0)
+      {
+
+         CalculateBlackRooks(argsMoves,
+            argsBoard,
+            argsGeneralMoves);
+
+      }
+
+      if (argsBoard->bbBlackQueen > 0)
+      {
+
+         CalculateBlackQueens(argsMoves,
+            argsBoard,
+            argsGeneralMoves);
+
+      }
+
+      if (argsBoard->bbBlackKing > 0)
+      {
+
+         CalculateBlackKing(argsMoves,
+            argsBoard,
+            argsGeneralMoves);
+
+      }
+
+      // ========================== FIX START ==========================
+      // Before checking for castling, calculate the opponent's (White's) attack map.
+      Move vsDummyMoveList[dNumberOfMoves];
+      int iOldNumberOfMoves = argsBoard->siNumberOfMoves;
+      BitBoard bbOldBlackAttack = argsBoard->bbBlackAttack; // Save Black's attack map
+      BitBoard bbOldBlackMove = argsBoard->bbBlackMove;     // Save Black's move map
+
+      argsBoard->siColorToMove = dWhite;
+      CalculateAttacks(vsDummyMoveList, argsBoard, argsGeneralMoves); // This calculates bbWhiteAttack
+      argsBoard->siColorToMove = dBlack;
+
+      // Restore original state to avoid side-effects
+      argsBoard->bbBlackAttack = bbOldBlackAttack;
+      argsBoard->bbBlackMove = bbOldBlackMove;
+      argsBoard->siNumberOfMoves = iOldNumberOfMoves;
+      // =========================== FIX END ===========================
+
+      if (argsBoard->bbCastle > 0)
+      {
+
+         CastleBlack(argsMoves,
+            argsBoard,
+            argsGeneralMoves);
+
+      }
+
+   }
+
+   // Calculate Check.
+   CalculateCheck(argsMoves,
+      argsBoard,
+      argsGeneralMoves);
+
+}
+
+//
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-void CalculateMoves( struct Move        * argsMoves, 
+void CalculateMoves1( struct Move        * argsMoves, 
                      struct Board       * argsBoard, 
                      struct GeneralMove * argsGeneralMoves )
 {
@@ -1037,10 +1245,88 @@ void CalculateWhiteKing( struct Move * argsMoves,
 
 }
 
+
 //
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-void CastleWhite( struct Move        * argsMoves,
+void CastleWhite(struct Move* argsMoves,
+   struct Board* argsBoard,
+   struct GeneralMove* argsGeneralMoves)
+{
+   //
+   // This function is used to calculate if the King can castle.
+   //
+
+      // Debug the inputs.
+   assert(argsMoves >= 0);
+   assert(argsBoard >= 0);
+   assert(argsGeneralMoves >= 0);
+
+   // Check to see what casteling is available.
+   int iNumberOfBits = 0;
+   int vCastle[4];
+
+   // Extract the castle state.
+   iNumberOfBits = Find(argsBoard->bbCastle,
+      vCastle,
+      argsGeneralMoves);
+
+   // Look for the king side castle.
+   if ((argsBoard->bbCastle & 1) &&
+      ((argsGeneralMoves->bbKingSideWhite & argsBoard->bbAllPieces) == 0) &&
+      ((argsGeneralMoves->bbKingSideWhite & argsBoard->bbBlackAttack) == 0) && // FIX: Check against attack map
+      ((argsBoard->bbWhiteKing & argsBoard->bbBlackAttack) == 0) &&
+      (argsBoard->mBoard[dH1] == dWhiteRook))
+   {
+
+      // Enter the castle move.
+      argsBoard->siNumberOfMoves++;
+      InitializeMoves(argsMoves,
+         argsBoard->siNumberOfMoves - 1);
+      argsMoves[argsBoard->siNumberOfMoves - 1].bbFromSquare = SetBitToOne(argsMoves[argsBoard->siNumberOfMoves - 1].bbFromSquare,
+         dE1);
+      argsMoves[argsBoard->siNumberOfMoves - 1].bbToSquare = SetBitToOne(argsMoves[argsBoard->siNumberOfMoves - 1].bbToSquare,
+         dG1);
+      argsMoves[argsBoard->siNumberOfMoves - 1].iFromSquare = dE1;
+      argsMoves[argsBoard->siNumberOfMoves - 1].iToSquare = dG1;
+      argsMoves[argsBoard->siNumberOfMoves - 1].iMoveType = dWhiteKingSideCastle;
+      argsMoves[argsBoard->siNumberOfMoves - 1].iPiece = dWhiteKing;
+      argsMoves[argsBoard->siNumberOfMoves - 1].iScore = argsGeneralMoves->msCastle;
+
+   }
+
+   // Look for the queen side castle.
+   if (((argsBoard->bbCastle & 4) > 0) &&
+      ((argsGeneralMoves->bbQueenSideWhite & argsBoard->bbAllPieces) == 0) &&
+      ((argsGeneralMoves->bbQueenSideWhite & argsBoard->bbBlackAttack) == 0) && // FIX: Check against attack map
+      ((argsBoard->bbWhiteKing & argsBoard->bbBlackAttack) == 0) &&
+      (argsBoard->mBoard[dA1] == dWhiteRook))
+   {
+
+      // Enter the castle move.
+      argsBoard->siNumberOfMoves++;
+      InitializeMoves(argsMoves,
+         argsBoard->siNumberOfMoves - 1);
+      argsMoves[argsBoard->siNumberOfMoves - 1].bbFromSquare = SetBitToOne(argsMoves[argsBoard->siNumberOfMoves - 1].bbFromSquare,
+         dE1);
+      argsMoves[argsBoard->siNumberOfMoves - 1].bbToSquare = SetBitToOne(argsMoves[argsBoard->siNumberOfMoves - 1].bbToSquare,
+         dC1);
+      argsMoves[argsBoard->siNumberOfMoves - 1].iFromSquare = dE1;
+      argsMoves[argsBoard->siNumberOfMoves - 1].iToSquare = dC1;
+      argsMoves[argsBoard->siNumberOfMoves - 1].iMoveType = dWhiteQueenSideCastle;
+      argsMoves[argsBoard->siNumberOfMoves - 1].iPiece = dWhiteKing;
+      argsMoves[argsBoard->siNumberOfMoves - 1].iScore = argsGeneralMoves->msCastle;
+
+   }
+
+}
+
+
+
+//
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//
+void CastleWhite1( struct Move        * argsMoves,
                   struct Board       * argsBoard,
                   struct GeneralMove * argsGeneralMoves )
 {
@@ -1963,9 +2249,85 @@ void CalculateBlackKing(    struct Move * argsMoves,
 }
 
 //
+//-----------------------------------------------------------------------------------
+//
+void CastleBlack(struct Move* argsMoves,
+   struct Board* argsBoard,
+   struct GeneralMove* argsGeneralMoves)
+{
+   //
+   // This function is used to calculate if the King can castle.
+   //
+      // Debug the inputs.
+   assert(argsMoves >= 0);
+   assert(argsBoard >= 0);
+   assert(argsGeneralMoves >= 0);
+
+   // Check to see what casteling is available.
+   int iNumberOfBits = 0;
+   int vCastle[4];
+
+   // Extract the castle state.
+   iNumberOfBits = Find(argsBoard->bbCastle,
+      vCastle,
+      argsGeneralMoves);
+
+   // Look for the king side castle.
+   if ((argsBoard->bbCastle & 2) &&
+      ((argsGeneralMoves->bbKingSideBlack & argsBoard->bbAllPieces) == 0) &&
+      ((argsGeneralMoves->bbKingSideBlack & argsBoard->bbWhiteAttack) == 0) && // FIX: Check against attack map
+      ((argsBoard->bbBlackKing & argsBoard->bbWhiteAttack) == 0) &&
+      (argsBoard->mBoard[dH8] == dBlackRook))
+   {
+
+      // Enter the castle move.
+      argsBoard->siNumberOfMoves++;
+      InitializeMoves(argsMoves,
+         argsBoard->siNumberOfMoves - 1);
+      argsMoves[argsBoard->siNumberOfMoves - 1].bbFromSquare = SetBitToOne(argsMoves[argsBoard->siNumberOfMoves - 1].bbFromSquare,
+         dE8);
+      argsMoves[argsBoard->siNumberOfMoves - 1].bbToSquare = SetBitToOne(argsMoves[argsBoard->siNumberOfMoves - 1].bbToSquare,
+         dG8);
+      argsMoves[argsBoard->siNumberOfMoves - 1].iFromSquare = dE8;
+      argsMoves[argsBoard->siNumberOfMoves - 1].iToSquare = dG8;
+      argsMoves[argsBoard->siNumberOfMoves - 1].iMoveType = dBlackKingSideCastle;
+      argsMoves[argsBoard->siNumberOfMoves - 1].iPiece = dBlackKing;
+      argsMoves[argsBoard->siNumberOfMoves - 1].iScore = argsGeneralMoves->msCastle;
+
+   }
+
+   // Look for the queen side castle.
+   if ((argsBoard->bbCastle & 8) &&
+      ((argsGeneralMoves->bbQueenSideBlack & argsBoard->bbAllPieces) == 0) &&
+      ((argsGeneralMoves->bbQueenSideBlack & argsBoard->bbWhiteAttack) == 0) && // FIX: Check against attack map
+      ((argsBoard->bbBlackKing & argsBoard->bbWhiteAttack) == 0) &&
+      (argsBoard->mBoard[dA8] == dBlackRook))
+   {
+
+      // Enter the castle move.
+      argsBoard->siNumberOfMoves++;
+      InitializeMoves(argsMoves,
+         argsBoard->siNumberOfMoves - 1);
+      argsMoves[argsBoard->siNumberOfMoves - 1].bbFromSquare = SetBitToOne(argsMoves[argsBoard->siNumberOfMoves - 1].bbFromSquare,
+         dE8);
+      argsMoves[argsBoard->siNumberOfMoves - 1].bbToSquare = SetBitToOne(argsMoves[argsBoard->siNumberOfMoves - 1].bbToSquare,
+         dC8);
+      argsMoves[argsBoard->siNumberOfMoves - 1].iFromSquare = dE8;
+      argsMoves[argsBoard->siNumberOfMoves - 1].iToSquare = dC8;
+      argsMoves[argsBoard->siNumberOfMoves - 1].iMoveType = dBlackQueenSideCastle;
+      argsMoves[argsBoard->siNumberOfMoves - 1].iPiece = dBlackKing;
+      argsMoves[argsBoard->siNumberOfMoves - 1].iScore = argsGeneralMoves->msCastle;
+
+   }
+
+}
+
+
+
+//
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //
-void CastleBlack( struct Move * argsMoves,
+void CastleBlack1( struct Move * argsMoves,
                   struct Board * argsBoard,
                   struct GeneralMove * argsGeneralMoves )
 {
@@ -3512,7 +3874,7 @@ void InputUserMove( struct Board * argsBoard,
       
       // See if the move is in the move list.
       iFoundMove = 0;
-      iStringLength = strlen( strMove );
+      iStringLength = static_cast<int>(strlen( strMove ));
       for ( iMoveNumber = 0; iMoveNumber < iNumberOfMoves; iMoveNumber++ )
       {
       
@@ -4010,7 +4372,7 @@ int PrintMove( struct Board * argsBoard,
                      argsGeneralMoves );
                            
    // Look to see if the king is in check.                        
-   int iCheck = sBoard->bbCheck;
+   int iCheck = (int)sBoard->bbCheck;
 
    // Undo the move.
    UndoMove( sBoard,
@@ -4722,9 +5084,9 @@ void ComputerMove( struct Board * argsBoard,
       strcpy( strUpdate, " " );
       sprintf( strUpdate, "bestmove %s info depth %d seldepth %d nodes %d", 
                strMove,
-               argsBoard->iMaxPlys + 1, 
-               argsBoard->iMaxPlysReached + 1, 
-               GetNumberOfNodes() );
+               (int)argsBoard->iMaxPlys + 1, 
+               (int)argsBoard->iMaxPlysReached + 1, 
+               (int)(GetNumberOfNodes()) );
 
       // Some Debugging.
       if ( GetInterfaceMovesDebug() )
@@ -6743,7 +7105,7 @@ int GetMoveNumber( struct Board * argsBoard,
    
    // See if the move is in the move list.
    iFoundMove = 0;
-   iStringLength = strlen( argstrMove );
+   iStringLength = (int)strlen( argstrMove );
    for ( iMoveNumber = 0; iMoveNumber < iNumberOfMoves; iMoveNumber++ )
    {
    
@@ -6904,7 +7266,7 @@ int GetMoveNumberFast( struct Board * argsBoard,
    
    // See if the move is in the move list.
    iFoundMove = 0;
-   iStringLength = strlen( argstrMove );
+   iStringLength = (int)strlen( argstrMove );
    for ( iMoveNumber = 0; iMoveNumber < iNumberOfMoves; iMoveNumber++ )
    {
    
@@ -7033,7 +7395,7 @@ void FindAlgebraicMove( struct Board * argsBoard,
                      & siLength );
 
    // Look for a promotion
-   iStringLength = strlen( argstrMove );
+   iStringLength = (int)strlen( argstrMove );
    if ( iStringLength > 4 )
    {
    
@@ -8832,8 +9194,8 @@ void CalculateWhitePawnsQuiets( struct Move * argsMoves,
    int vMovesOneStep[    8 ];
    int vMovesTwoStep[    8 ];
    int vPromotionsOne[   8 ];
-   int vPromotionsRight[ 8 ];
-   int vPromotionsLeft[  8 ];
+   //int vPromotionsRight[ 8 ];
+   //int vPromotionsLeft[  8 ];
    int siNumberOfMovesOneStep  = Find( bbOneStep,         vMovesOneStep,    argsGeneralMoves );
    int siNumberOfMovesTwoStep  = Find( bbTwoStep,         vMovesTwoStep,    argsGeneralMoves );
    int numberOfPromotionsOne   = Find( bbPromotionsOne,   vPromotionsOne,   argsGeneralMoves );
@@ -9689,7 +10051,7 @@ void CalculateBlackKingQuiets(    struct Move * argsMoves,
    int index = 0;
 
    int vMoves[   8 ];
-   int vAttacks[ 8 ];
+   //int vAttacks[ 8 ];
 
    // Look for the good moves..
    BitBoard bbMoves = argsGeneralMoves->bbKMove[ vPieces[ index ] ] &

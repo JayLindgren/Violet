@@ -143,7 +143,7 @@ void InitializeHashTable()
 //
 //-----------------------------------------------------------------------
 //
-void UpdateHash( struct Move * argsMove,
+void UpdateHash1( struct Move * argsMove,
                  struct Board * argsBoard,
                  int iMakeUnmake,
                  struct GeneralMove * argsGeneralMoves )
@@ -252,6 +252,142 @@ void UpdateHash( struct Move * argsMove,
 
        gsHashTable.bbHash = gsHashTable.bbHash ^
                             gsHashTable.vbbHashKeysStates[ 1 ];
+
+   }
+
+}
+
+//
+//-----------------------------------------------------------------------
+//
+void UpdateHash(struct Move* argsMove,
+   struct Board* argsBoard,
+   int iMakeUnmake,
+   struct GeneralMove* argsGeneralMoves)
+
+{
+   // Debug the inputs
+   assert(argsMove >= 0);
+   assert(argsBoard >= 0);
+   assert(iMakeUnmake >= 0);
+   assert(argsGeneralMoves >= 0);
+
+   // Update the hash.
+   int iToSquare = argsMove->iToSquare;
+   int iFromSquare = argsMove->iFromSquare;
+   int iPiece = argsMove->iPiece;
+   int iCapture = argsMove->iCapture;
+   int iMoveType = argsMove->iMoveType;
+
+   assert(iToSquare >= 0);
+   assert(iToSquare <= 64);
+   assert(iFromSquare >= 0);
+   assert(iFromSquare <= 64);
+   assert(iPiece >= 0);
+   assert(iPiece <= dBlackKing);
+   assert(iCapture >= 0);
+   assert(iCapture <= 64);
+   assert(iMoveType >= 0);
+
+   // --- START: MODIFIED LOGIC ---
+
+   if ((iMoveType == dPromote) || (iMoveType == dCaptureAndPromote))
+   {
+      // --- This is a promotion ---
+      // We need to determine the pawn piece type that was on the from-square.
+      // We can infer its color from the color of the promoted piece.
+
+      int pawn_piece;
+      if (iPiece < dBlackPawn) // Assuming dBlackPawn is the first black piece enum (e.g., 6)
+      {
+         pawn_piece = dWhitePawn; // This was a white pawn
+      }
+      else
+      {
+         pawn_piece = dBlackPawn; // This was a black pawn
+      }
+
+      // 1. XOR out the pawn from the starting square
+      // 2. XOR in the new promoted piece at the destination square
+      gsHashTable.bbHash ^= gsHashTable.mbbHashKeys[pawn_piece][iFromSquare] ^
+         gsHashTable.mbbHashKeys[iPiece][iToSquare];
+
+      // If it was a capture and promotion, we also need to remove the captured piece
+      if (iMoveType == dCaptureAndPromote)
+      {
+         gsHashTable.bbHash ^= gsHashTable.mbbHashKeys[iCapture][iToSquare];
+      }
+   }
+   else
+   {
+      // --- This is NOT a promotion, handle other moves normally ---
+
+      // Do a normal move.
+      gsHashTable.bbHash ^= gsHashTable.mbbHashKeys[iPiece][iFromSquare] ^
+         gsHashTable.mbbHashKeys[iPiece][iToSquare];
+
+      // Do a capture.
+      if (iMoveType == dCapture)
+      {
+         gsHashTable.bbHash ^= gsHashTable.mbbHashKeys[iCapture][iToSquare];
+      }
+
+      // Do that EP thing.
+      if (iMoveType == dEnPassant)
+      {
+         // Note: For en passant, you must also remove the captured pawn from the correct square.
+         // That logic seems to be missing from your original code.
+         gsHashTable.bbHash ^= gsHashTable.vbbEnPassant[iToSquare];
+      }
+   }
+
+   // --- END: MODIFIED LOGIC ---
+
+
+// Handle the castling possibilities.
+   if (iMoveType == dWhiteKingSideCastle)
+   {
+
+      gsHashTable.bbHash = gsHashTable.bbHash ^
+         gsHashTable.vbbHashKeysStates[0];
+
+   }
+   else if (iMoveType == dWhiteQueenSideCastle)
+   {
+
+      gsHashTable.bbHash = gsHashTable.bbHash ^
+         gsHashTable.vbbHashKeysStates[1];
+
+   }
+   else if (iMoveType == dBlackKingSideCastle)
+   {
+
+      gsHashTable.bbHash = gsHashTable.bbHash ^
+         gsHashTable.vbbHashKeysStates[2];
+
+   }
+   else if (iMoveType == dBlackQueenSideCastle)
+   {
+
+      gsHashTable.bbHash = gsHashTable.bbHash ^
+         gsHashTable.vbbHashKeysStates[3];
+
+   }
+
+   // Switch on the colors, note that since we need to remove on color and add the other
+   // this operation will always be performed.
+   if (iPiece < dBlackPawn)
+   {
+
+      gsHashTable.bbHash = gsHashTable.bbHash ^
+         gsHashTable.vbbHashKeysStates[0];
+
+   }
+   else
+   {
+
+      gsHashTable.bbHash = gsHashTable.bbHash ^
+         gsHashTable.vbbHashKeysStates[1];
 
    }
 

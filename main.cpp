@@ -21,7 +21,7 @@ using namespace std;
 //
 //-----------------------------------------------------------------------
 //
-void main()
+int main()
 {
 
     // Allocate the structures.
@@ -39,4 +39,5 @@ void main()
    // Free the large chunks of memory as we leave.
    Destroy();
 
+   return 0;
 }

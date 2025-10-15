@@ -27,7 +27,10 @@
 
 //# include <vld.h> 
 
+//# define NDEBUG 
+#ifndef NDEBUG
 # define NDEBUG 
+#endif
 # include <assert.h>
 
 // Turn on deep mode
@@ -312,191 +315,18 @@ typedef unsigned long long int BitBoard;
 # define dMaxMoveScore              1000
 # define dNumberOfSimulations       1000
 
-/*
-//	Define	the	move
-#	define	dsRegular	12
-#	define	dsPawnTwo	18
-#	define	dsPiece	8
-#	define	dsQueen	162
-#	define	dsBishop	26
-#	define	dsRook	54
-#	define	dsKnight	37
-#	define	dsKing	335
-#	define	dsCaptureDown	4
-#	define	dsCaptureSide	2
-#	define	dsCaptureUp	78
-#	define	dsCheck	695
-#	define	dsPromotion	1000
-#	define	dsCastle	1
-#	define	dsKillerMove	1501
-#	define	dsHH	1500
-#	define	dsKingCapture	2
-#	define	dsBestMove	6
-#	define	dsPVMove	599
-			
-//	Redefine	the	captures.
-#	define	dsPawnTakesQueen	59
-#	define	dsPawnTakesRook	16
-#	define	dsPawnTakesBishop	12
-#	define	dsPawnTakesKnight	464
-#	define	dsPawnTakesPawn	166
-#	define	dsKnightTakesPawn	100
-#	define	dsKnightTakesKnight	359
-#	define	dsKnightTakesBishop	5
-#	define	dsKnightTakesRook	1
-#	define	dsKnightTakesQueen	46
-#	define	dsBishopTakesPawn	215
-#	define	dsBishopTakesKnight	3
-#	define	dsBishopTakesBishop	77
-#	define	dsBishopTakesRook	4
-#	define	dsBishopTakesQueen	1
-#	define	dsRookTakesPawn	7
-#	define	dsRookTakesKnight	2
-#	define	dsRookTakesBishop	2
-#	define	dsRookTakesRook	774
-#	define	dsRookTakesQueen	129
-#	define	dsQueenTakesPawn	1000
-#	define	dsQueenTakesKnight	21
-#	define	dsQueenTakesBishop	10
-#	define	dsQueenTakesRook	35
-#	define	dsQueenTakesQueen	27
-
-
-
-//*/
-
-
-/* Attempt at MVV/LVA Scores - This gives bad scores
-// Define the move scores.
-# define dsRegular       10
-# define dsPawnTwo       4 // 20 226,823, 5 187,069, 4 187,232
-# define dsPiece         30
-//# define dsQueen         40
-# define dsQueen          5
-# define dsBishop        50
-# define dsRook          60
-# define dsKnight        70
-# define dsKing          80  
-//# define dsCaptureDown  100
-# define dsCaptureDown   125 // 125 253,890
-//# define dsCaptureDown   250 // 250 253,950
-# define dsCaptureSide  110 // 110, 251,519, 200 251,888, 10 251,427
-# define dsCaptureUp    120 
-# define dsCheck        200
-# define dsPromotion    300
-# define dsCastle       99 // 400 253864, 1600 257155, 299 252921, 199 253024, 99 251,519
-# define dsKillerMove  1501 // 1501 253864
-# define dsHH          1500
-# define dsKingCapture 5000
-# define dsBestMove    6000
-# define dsPVMove      1000 // 7000 251,519, 1000 226,823
-
-
-// Redefine the captures.
-//Upward
-# define dsPawnTakesQueen    400
-# define dsPawnTakesRook     390
-# define dsPawnTakesBishop   380
-# define dsPawnTakesKnight   370
-# define dsKnightTakesBishop 360
-# define dsKnightTakesRook   350
-# define dsKnightTakesQueen  340
-# define dsBishopTakesRook   330
-# define dsBishopTakesQueen  320
-# define dsRookTakesQueen    310
-
-// Even
-# define dsPawnTakesPawn     300
-# define dsKnightTakesKnight 290
-# define dsBishopTakesBishop 280
-# define dsRookTakesRook     270
-# define dsQueenTakesQueen   260
-
-// Downward
-# define dsKnightTakesPawn   200
-# define dsBishopTakesKnight 190
-# define dsBishopTakesPawn   180
-# define dsRookTakesBishop   170
-# define dsRookTakesKnight   160
-# define dsRookTakesPawn     150
-# define dsQueenTakesRook    140
-# define dsQueenTakesBishop  130
-# define dsQueenTakesPawn    120
-# define dsQueenTakesKnight  110
-//*/
-
-
-
-/* Hand Optimized
-// Define the move scores.
-# define dsRegular       10
-# define dsPawnTwo       4 // 20 226,823, 5 187,069, 4 187,232
-# define dsPiece         30
-//# define dsQueen         40
-# define dsQueen          5
-# define dsBishop        70
-# define dsRook          60
-# define dsKnight        80
-# define dsKing           2  
-//# define dsCaptureDown  100
-# define dsCaptureDown   125 // 125 253,890
-//# define dsCaptureDown   250 // 250 253,950
-# define dsCaptureSide  110 // 110, 251,519, 200 251,888, 10 251,427
-# define dsCaptureUp    120 
-# define dsCheck        200
-# define dsPromotion    300
-# define dsCastle       99 // 400 253864, 1600 257155, 299 252921, 199 253024, 99 251,519
-# define dsKillerMove  1501 // 1501 253864
-# define dsHH          1500
-# define dsKingCapture 5000
-# define dsBestMove    6000
-# define dsPVMove      1000 // 7000 251,519, 1000 226,823
-
-// Redefine the captures. // e4 157293
-# define dsPawnTakesQueen    390
-# define dsPawnTakesRook     380
-# define dsPawnTakesBishop   370
-# define dsPawnTakesKnight   360
-# define dsKnightTakesBishop 350
-# define dsKnightTakesRook   340
-# define dsKnightTakesQueen  330
-# define dsBishopTakesRook   320
-# define dsBishopTakesQueen  310
-# define dsRookTakesQueen    300
-//Even
-# define dsPawnTakesPawn     250
-# define dsKnightTakesKnight 240
-# define dsBishopTakesBishop 230
-# define dsRookTakesRook     220
-# define dsQueenTakesQueen   210
-// Down
-# define dsBishopTakesKnight  98
-# define dsKnightTakesPawn    93
-# define dsBishopTakesPawn    92
-# define dsRookTakesPawn      95
-# define dsRookTakesKnight    95
-# define dsRookTakesBishop    95
-# define dsQueenTakesPawn     90
-# define dsQueenTakesKnight   90
-# define dsQueenTakesBishop   90
-# define dsQueenTakesRook     90
-//*/
-
 
 ///* Orignal Scores
 // Define the move scores.
 # define dsRegular       10
 # define dsPawnTwo       4 // 20 226,823, 5 187,069, 4 187,232
 # define dsPiece         30
-//# define dsQueen         40
 # define dsQueen          5
 # define dsBishop        50
 # define dsRook          60
 # define dsKnight        70
 # define dsKing          80  
-//# define dsCaptureDown  100
 # define dsCaptureDown   125 // 125 253,890
-//# define dsCaptureDown   250 // 250 253,950
 # define dsCaptureSide  110 // 110, 251,519, 200 251,888, 10 251,427
 # define dsCaptureUp    120 
 # define dsCheck        200
@@ -565,7 +395,7 @@ typedef unsigned long long int BitBoard;
 # define dBookCutOff       100 // Used for trimming the book but not for move selection
 # define dPopularityCutOff 0.9 // used for going after only the most popular moves.
 # define dMoveCutOff       100 // Used for move selection
-# define dWinCutOff        60
+//# define dWinCutOff        60
 # define dNotALoss         0.6
 
 // For the verification of the book.  If the position scores less then this, it will be removed from
@@ -604,41 +434,13 @@ typedef unsigned long long int BitBoard;
 // Some parameters for when the null move is used.
 # define dMaxPieces 31
 # define dMinPieces 0
-//# define dMinPiecesToVerify 16
 # define dMinPiecesToVerify 32
-//# define dNullThreshold 150 // one and a half pawns.
-//# define dNullThreshold 350 // one and a half pawns.
-//# define dNullThreshold 1 // one and a half pawns.
 
 ///////////////////////////////////////////////////////////////
 // Search parameters
 ///////////////////////////////////////////////////////////////
 
 // This sets the value below Alpha that must be found before pruning.
-/*
-# define dForwardPrune0 000
-# define dForwardPrune1 100
-# define dForwardPrune2 150
-# define dForwardPrune3 200
-# define dForwardPrune4 250
-# define dForwardPrune5 300
-# define dForwardPrune6 400
-# define dForwardPrune7 500
-# define dForwardPrune8 600
-# define dForwardPrune9 700
-//*/
-/*
-# define dForwardPrune0 200
-# define dForwardPrune1 300
-# define dForwardPrune2 350
-# define dForwardPrune3 400
-# define dForwardPrune4 450
-# define dForwardPrune5 500
-# define dForwardPrune6 600
-# define dForwardPrune7 700
-# define dForwardPrune8 800
-# define dForwardPrune9 900
-//*/
 ///*
 # define dForwardPrune0 300
 # define dForwardPrune1 400
@@ -657,3 +459,99 @@ typedef unsigned long long int BitBoard;
 
 // Define the window for the aspirational search window.
 # define dAspirationalWindowWidth 30
+
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+// Define some evaluation parameters
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Define the doubled pawn score. - Note, these score get counted twice (one for each pawn).
+# define dDoubleCol1 10
+# define dDoubleCol2 10
+# define dDoubleCol3 10
+# define dDoubleCol4 10
+# define dDoubleCol5 10
+# define dDoubleCol6 10
+# define dDoubleCol7 10
+# define dDoubleCol8 10
+
+// Define the piece values.
+# define dEmpty                  0
+# define dValuePawnOpening     100
+# define dValueRookOpening     500
+# define dValueKnightOpening   325
+# define dValueBishopOpening   325
+# define dValueQueenOpening    900
+# define dValueKingOpening    9999
+
+# define dValuePawnEndGame     100
+# define dValueRookEndGame     500
+# define dValueKnightEndGame   325
+# define dValueBishopEndGame   325
+# define dValueQueenEndGame    901
+# define dValueKingEndGame    9999
+
+// Define some phase numbers.
+# define dPhasePawn   1
+# define dPhaseKnight 10
+# define dPhaseBishop 10
+# define dPhaseRook   20
+# define dPhaseQueen  40
+
+// Defind the maximum phase
+// Max Phase = 16 * 1 + 4 * 20 + 4 * 10 + 4 * 10 + 2 * 40
+# define dMaxPhase 256
+
+// Define penality for not casteling :
+# define dNoCastlePenality 20
+
+// Define the score for one square of mobility.
+# define dMobilityScore 4
+
+// Mobility in the opening.
+# define dMobilityKnightOpening 4
+# define dMobilityBishopOpening 5
+# define dMobiltiyRookOpening   2
+# define dMobilityQueenOpening  1
+# define dMobilityKingOpening   0
+
+// Mobility in the end game.
+# define dMobilityKnightEndGame 4
+# define dMobilityBishopEndGame 5
+# define dMobiltiyRookEndGame   4
+# define dMobilityQueenEndGame  1
+# define dMobilityKingEndGame   0
+
+
+// Define the bonus for having a double bishop
+# define dBishopPair 25 
+
+// King safety, king potential attack.
+// This is be counted if a piece can potentially attack the king from
+// from their current square.
+//# define dKingOpaqueAttack 2
+# define dKingOpaqueAttack 1
+
+// The value of having a king fence.
+# define dKingFence 15
+
+// Define the value of a draw, a contempt for draw maybe placed here.
+# define dDrawValue 0
+
+// Define the value of a passed pawn
+// And the value of a passed pawn but blocked.
+# define dPassedPawnIntercept 10
+# define dPassedPawnSlope 10
+# define dPassedPawnBlocked
+# define dIsolatedPawn 10
+# define dDoubledPawn
+
+// Add in for rooks on open and semi open files.
+# define dRookOnSemiOpenFileOpening     10
+# define dRookOnOpenFileOpening         20
+# define dRookOnSemiOpenKingFileOpening 10
+# define dRookOnOpenKingFileOpening     20
+# define dRookOnSemiOpenFileEndGame     10
+# define dRookOnOpenFileEndGame         20
+# define dRookOnSemiOpenKingFileEndGame 10
+# define dRookOnOpenKingFileEndGame     20

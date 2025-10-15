@@ -1,4 +1,5 @@
 // This file containes useful routines, but that are not part off the heart of Violet.
+// This file containes useful routines, but that are not part off the heart of Violet.
 // They are thrown in hodgepodge.
 #include <iostream>
 #include <fstream>

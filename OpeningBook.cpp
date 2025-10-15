@@ -1,4 +1,4 @@
-
+#define _CRT_SECURE_NO_WARNINGS
 #include <iostream>
 //#include <stdlib.h>
 #include <fstream>
@@ -376,9 +376,9 @@ void OpeningBookAnalysis( struct Board * argsBoard,
                {  
 
                   char strMoveDummy[ 64 ] = " ";
-                  int iMoveNumberLength = strlen( strMoveNumber );
-                  int iMoveLength       = strlen( strMove );
-                  int iDummy            = strlen( strMoveDummy );
+                  int iMoveNumberLength = (int)(strlen( strMoveNumber ));
+                  int iMoveLength       = (int)(strlen( strMove       ));
+                  int iDummy            = (int)(strlen( strMoveDummy  ));
                   strncpy( strMoveDummy, strMove + strlen( strMoveNumber ), strlen( strMove ) - strlen( strMoveNumber ) );  
                   strcpy( strMove, strMoveDummy ); 
  
@@ -743,7 +743,7 @@ void PrintOpeningBookMoveStatistics( struct Board * argsBoard,
                 argsGeneralMoves );
 
       // Collect the popularity.
-      viPopularity[ iMoveCount ] = bbWhiteWins + bbBlackWins + bbDraws;
+      viPopularity[ iMoveCount ] = (int)(bbWhiteWins + bbBlackWins + bbDraws);
       viSortOrder[ iMoveCount ] = iMoveCount;
           
    }
@@ -975,8 +975,8 @@ void FindBookMove( struct Board * argsBoard,
       }
 
       // See if the move is feasibility.
-      if ( ( viTotalGames[ iMoveCount ] >= dMoveCutOff ) &
-           ( iWins                      >= dWinCutOff  ) &
+      if ( ( viTotalGames[ iMoveCount ] >= dMoveCutOff ) &&
+           ( iWins                      >= dWinCutOff  ) &&
            ( dPercentNotLoss            >= dNotALoss   ) )
       {
 
@@ -2012,7 +2012,7 @@ void GetPopularMoves( struct Board * argsBoard,
                 argsGeneralMoves );
 
       // Collect the popularity.
-      viPopularity[ iMoveCount ] = bbWhiteWins + bbBlackWins + bbDraws;
+      viPopularity[ iMoveCount ] = (int)(bbWhiteWins + bbBlackWins + bbDraws);
       viSortOrder[ iMoveCount ] = iMoveCount;
           
       // Calculate the number of populare moves.
@@ -2072,7 +2072,7 @@ void GetPopularMoves( struct Board * argsBoard,
 //
 int GetNumberOfPositionsInOpeningBook()
 {
-   return gsOpeningBook.bbNumberOfPositionsInBook;
+   return (int)(gsOpeningBook.bbNumberOfPositionsInBook);
 }
 
 //
@@ -2080,7 +2080,7 @@ int GetNumberOfPositionsInOpeningBook()
 //
 int GetNumberOfPositionsVerified()
 {
-   return gsOpeningBook.bbNumberOfPositionsVerified;
+   return (int)(gsOpeningBook.bbNumberOfPositionsVerified);
 }
 
 //

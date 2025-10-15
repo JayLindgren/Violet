@@ -1,4 +1,4 @@
-
+#define _CRT_SECURE_NO_WARNINGS
 #include "Definitions.h"
 #include "Functions.h"
 #include "Structures.h"
@@ -7,8 +7,14 @@
 #include <Windows.h>
 #include <fstream>
 #include <io.h>
+#include <string>    // For std::string
+#include <vector>    // For std::vector (used for searchmoves)
+#include <sstream>   // For std::stringstream (used for parsing)
+#include <algorithm> // For std::find
 
 using namespace std;
+
+// --- Global Variables for Interface ---
 
 // Give the program a global pipe, unix style.
 static int giPipe;
@@ -19,6 +25,49 @@ static HANDLE ghStandardInput;
 // Create a global file for debugging.
 ofstream gofDebug;
 
+// New: Store the list of moves for a "go searchmoves" command.
+// This allows the search function to access it without changing its signature.
+static std::vector<std::string> g_searchMoves;
+
+// --- New Helper Functions ---
+
+// New: Helper function to get the restricted list of search moves.
+// Your ComputerMove() function should call this to check if the search is restricted.
+const std::vector<std::string>& GetSearchMoves()
+{
+   return g_searchMoves;
+}
+
+// New: Sends a formatted UCI "info" command.
+// CALL THIS PERIODICALLY FROM YOUR SEARCH FUNCTION (e.g., ComputerMove)
+// to update the GUI on search progress.
+void SendInfoCommand(int depth, int score, long long nodes, unsigned long time_ms, const std::string& pv)
+{
+   long long nps = (time_ms > 0) ? (nodes * 1000) / time_ms : 0;
+   // In UCI, scores are from the side to move's perspective.
+   // A score like "mate 5" means the engine has found a mate in 5.
+   // A score like "mate -5" means the engine is getting mated in 5.
+   // For centipawns, use "score cp".
+   cout << "info depth " << depth << " score cp " << score
+      << " nodes " << nodes << " nps " << nps << " pv " << pv << endl;
+}
+
+// New: Sends the final "bestmove" command.
+// CALL THIS AT THE END OF YOUR SEARCH FUNCTION (e.g., ComputerMove)
+// to report the final result.
+void SendBestMoveCommand(const std::string& bestMove, const std::string& ponderMove)
+{
+   cout << "bestmove " << bestMove;
+   if (!ponderMove.empty())
+   {
+      cout << " ponder " << ponderMove;
+   }
+   cout << endl;
+}
+
+
+// --- Core Interface Functions ---
+
 // Initialize the communications.
 void InitializeCommunications()
 {
@@ -26,46 +75,36 @@ void InitializeCommunications()
    unsigned long  lpMode;
 
    // Don't allow buffering
-   setbuf( stdout, NULL );
-   setbuf( stdin, NULL );
-   setvbuf( stdout, NULL, _IONBF, 0 );
-   setvbuf( stdin, NULL, _IONBF, 0 );
-   fflush( NULL );  
+   setvbuf(stdout, NULL, _IONBF, 0);
+   setvbuf(stdin, NULL, _IONBF, 0);
+   fflush(NULL);
 
    // Create the handle
-   ghStandardInput = GetStdHandle( STD_INPUT_HANDLE );
+   ghStandardInput = GetStdHandle(STD_INPUT_HANDLE);
 
    // Set the pipe
-   giPipe = !GetConsoleMode( ghStandardInput, 
-                             & lpMode );
+   giPipe = !GetConsoleMode(ghStandardInput, &lpMode);
 
    // Set the initial task.
-   SetStopGo( dStop );
+   SetStopGo(dStop);
 
    // Set the debug to no.
-   SetDebug( dNo );
+   SetDebug(dNo);
 
    // If the pipe failed to open then set the mode.
-   if ( !giPipe )
+   if (!giPipe)
    {
-
-        SetConsoleMode( ghStandardInput,
-                        lpMode&~(ENABLE_MOUSE_INPUT|ENABLE_WINDOW_INPUT) );
-        FlushConsoleInputBuffer( ghStandardInput );
-
+      SetConsoleMode(ghStandardInput, lpMode & ~(ENABLE_MOUSE_INPUT | ENABLE_WINDOW_INPUT));
+      FlushConsoleInputBuffer(ghStandardInput);
    }
 
    // Open the debug file if needed.  
-   if ( GetInterfaceDebug() )
+   if (GetInterfaceDebug())
    {
-//  filestr.open ("test.txt", fstream::in | fstream::out | fstream::app);
-
-      gofDebug.open( "InterfaceLog.txt", ios::out | ios::app );
+      gofDebug.open("InterfaceLog.txt", ios::out | ios::app);
       gofDebug << endl;
       gofDebug << "Interface started from interface." << endl << endl;
-
    }
-
 }
 
 //
@@ -73,1046 +112,340 @@ void InitializeCommunications()
 //
 void CloseCommunications()
 {
-
-   // Close degug files as needed.
-   if ( GetInterfaceBookDebug() )
+   // Close debug files as needed.
+   if (GetInterfaceBookDebug())
    {
-
       CloseBookDebug();
-
    }
-
-   // Close degug files as needed.
-   if ( GetInterfaceMovesDebug() )
+   if (GetInterfaceMovesDebug())
    {
-
       CloseMoveDebug();
-
    }
-
-   // Close down the communications.
-   if ( GetInterfaceDebug() )
+   if (GetInterfaceDebug())
    {
-
-      gofDebug << "Closing file." << endl;
-      gofDebug << endl;
+      gofDebug << "Closing file." << endl << endl;
       gofDebug.close();
-
    }
-
 }
 
 //
 //------------------------------------------------------------------------------------------------
 //
 // Check for input.
-int CheckForInput() 
+int CheckForInput()
 {
- 
    // Create a variable to hold the mode type.
    DWORD dwInput;
    int iPassFail = 0;
-   
+
    // Switch on the type of console we are running
-   // Is the console up or are we using a pipe.
-   if ( giPipe == 0 )
+   if (giPipe == 0)
    {
-
-      GetNumberOfConsoleInputEvents( ghStandardInput,
-                                     & dwInput );
-
-      if ( dwInput > 1 )  // Damn the Microsoft Corporation
+      GetNumberOfConsoleInputEvents(ghStandardInput, &dwInput);
+      // In console mode, any input is treated as a command (e.g., for "stop")
+      if (dwInput > 1)
       {
-   
          return 1;
-      
       }
-      else
-      {
-
-         return 0;
-
-      }
-
+      return 0;
    }
    else
    {
-
-      // If the peek works, look at the data.
-      // Damn the microsoft Corporation
-      // Damn them to hell!!!!
-      // The PeekNamedPipe function only fails if no eol is found!!!!!!
-      // Don't contol the input ono the number of bits found
-      // Control int the input on if the function fails!!!!!
-      // Damn the Microsoft corporation!
-   
-      iPassFail = PeekNamedPipe( ghStandardInput, 
-                                 NULL, 
-                                 0, 
-                                 NULL, 
-                                 & dwInput, 
-                                 NULL );
-   
-      if ( iPassFail == 0 )
+      // For pipes, PeekNamedPipe is used. It checks for data in the pipe without blocking.
+      iPassFail = PeekNamedPipe(ghStandardInput, NULL, 0, NULL, &dwInput, NULL);
+      if (iPassFail != 0 && dwInput > 0)
       {
-
          return 1;
-
       }
-      else
-      {
-
-         return 0;
-
-      }
-
+      return 0;
    }
-
 }
+
 //
 //--------------------------------------------------------------------------------------------
 //      
-void ReadInputAndExecute( struct Board * argsBoard,
-                          struct GeneralMove * argsGeneralMoves )
+void ReadInputAndExecute(struct Board* argsBoard, struct GeneralMove* argsGeneralMoves)
 {
-
    // Debug the inputs.
-   assert( argsBoard >= 0 );
-   assert( argsGeneralMoves >= 0 );
+   assert(argsBoard >= 0);
+   assert(argsGeneralMoves >= 0);
 
-   // Allocate a string for the command.
-   char strCommand[ dStringSize ];
-   char strSingleCommand[ dStringSize ];
-   int iFlag = 1;
-   int iCommandCount = 0;
-   char * strEndOfLine;
+   // Use std::string for safer and easier string handling.
+   string line;
 
-   // Clear the strings
-   * ( strCommand ) = 0;
-   * ( strSingleCommand ) = 0;
-   strEndOfLine = 0;
-
-   // Pull a string from the standard input
-   int bytes = _read( _fileno( stdin ),
-                     strCommand,
-                     2048 );
-
-   // Write out the full string.  Suspecting that we might be getting multiple commands at a time.
-   gofDebug << "Full string in from interface = " << strCommand  << endl;
-
-   // Point the end of line to the start of the tring to start.
-   strEndOfLine = strCommand;
-
-   // Count the number of commands in the lines.
-   while( iFlag )
+   // Read a complete line from stdin. This is more reliable than a fixed-size buffer.
+   if (getline(cin, line))
    {
-
-      strEndOfLine = strchr( strEndOfLine, '\n' );
-
-      // See if there is an end of line in the command.
-      if ( strEndOfLine != NULL )
+      if (gofDebug.is_open())
       {
-
-         // Increment the counter
-         iCommandCount++;
-   
-         // Increment the pointer.
-         strEndOfLine++;
-
-      }
-      else
-      {
-
-         // Get out of this loop.
-         iFlag = 0;
-
+         gofDebug << "Full string in from interface = " << line << endl;
       }
 
+      // In UCI, one line is one command.
+      CommandFromInterface(line, argsBoard, argsGeneralMoves);
    }
-
-   // Let the users at home know if we have more than one command.
-   if ( iCommandCount > 1 )
-   {
-
-      gofDebug << "Command Count = " << iCommandCount  << endl;
-      //gofDebug << "Full string in from interface = " << strCommand  << endl;
-
-   }
-
-   // Go back over the command and clean up the string and get rid of the noise.
-   // Cleaning is done just after this loop.
-   strEndOfLine = strCommand;
-   for ( int iCommand = 0; iCommand < iCommandCount; iCommand++ )
-   {
-
-      strEndOfLine = strchr( strEndOfLine, '\n' );
-      strEndOfLine++;
-
-   }
-
-   // Clear the end of line. Being sure to remove the EOL from the command
-   ( * strEndOfLine ) = 0;
-
-   // Loop over the lines in the command.
-   for ( int iCommand = 0; iCommand < iCommandCount; iCommand++ )
-   {
-
-      // Clear the single command.
-      * (strSingleCommand ) = 0;
-
-      // Copy the command string into the single command string
-      strcpy( strSingleCommand, strCommand );
-
-      // Log the substring being used.
-      //gofDebug << "1string being processed =  " << strSingleCommand << endl;
-
-      // In the future, switch here depending on the interface.
-      CommandFromInterface( strSingleCommand,
-                            argsBoard,
-                            argsGeneralMoves );
-
-      // Now clean up the full command.
-      iFlag = 1;
-      while( iFlag )
-      {
-
-         if ( strCommand[ 0 ] != '\n' )
-         {
-
-            memmove( strCommand, strCommand + 1, strlen( strCommand ) );
-
-         }
-         else
-         {
-
-            iFlag = 0;
-
-            memmove( strCommand, strCommand + 1, strlen( strCommand ) );
-            
-         }
-
-      }
-
-   }
-
 }
-
 
 //
 //------------------------------------------------------------------------------------------------
 //
-void SendCommand( const char * argstrCommand )
+void SendCommand(const char* argstrCommand)
 {
-
-   // Send a command to the interface.  Notice the end of line character.
+   // Send a command to the interface. Notice the end of line character is now handled by endl.
    // Always use this routine to send a command to make sure we have the end of line.
 
    // Debug.
-   if ( GetInterfaceDebug() )
+   if (GetInterfaceDebug())
    {
-
       gofDebug << "Sending a command to the interface = " << argstrCommand << endl << endl;
-
    }
 
    // Don't send an empty string.
-   if ( argstrCommand[ 0 ] != '\0' )
+   if (argstrCommand && argstrCommand[0] != '\0')
    {
-
-      printf( "%s\n", argstrCommand );
-
+      // Using cout and endl is safer and more idiomatic C++
+      cout << argstrCommand << endl;
    }
-
 }
- 
+
 //
 //------------------------------------------------------------------------------------------------------------------
 //
-void CommandFromInterface( char * argstrCommand,
-                           struct Board * argsBoard,
-                           struct GeneralMove * argsGeneralMoves )
+void CommandFromInterface(std::string argstrCommand, struct Board* argsBoard, struct GeneralMove* argsGeneralMoves)
 {
-
    // Debug the inputs.
-   assert( argsBoard >= 0 );
-   assert( argsGeneralMoves >= 0 );
+   assert(argsBoard >= 0);
+   assert(argsGeneralMoves >= 0);
 
-   // Declare some strings.
-   char strString[ 64 ] = "UCI Test";
-   char strTest[ 64 ] = "UCI";
-   char * pBeginning;
+   // Use string streams for easy parsing
+   std::stringstream ss(argstrCommand);
+   std::string command;
+   ss >> command;
 
-   // Debug.
-   if ( GetInterfaceDebug() )
+   if (GetInterfaceDebug())
    {
-
-      //gofDebug << "In CommandFromInterface." << endl;
-      gofDebug << "String in from interface  = " << argstrCommand << endl << endl;
-
+      gofDebug << "Processing command: " << command << " | Full line: " << argstrCommand << endl << endl;
    }
 
-   // See if we have found the string.
-   pBeginning = strstr( strString, strTest );
-
-   // Look for the initial command telling the program that it is using the UCI interface.
-   if ( strstr( argstrCommand, "uci" ) )
+   if (command == "uci")
    {
-/*
+      SetInterfaceMode(dUCI);
+      SendCommand("id name DeepViolet " dsVersion);
+      SendCommand("id author Dr. Jay Lindgren");
 
-* uci
-	tell engine to use the uci (universal chess interface),
-	this will be sent once as a first command after program boot
-	to tell the engine to switch to uci mode.
-	After receiving the uci command the engine must identify itself with the "id" command
-	and send the "option" commands to tell the GUI which engine settings the engine supports if any.
-	After that the engine should send "uciok" to acknowledge the uci mode.
-	If no uciok is sent within a certain time period, the engine task will be killed by the GUI.
-*/
-      // Set the global mode to UCI.
-      SetInterfaceMode( dUCI );
+      // New: Declare supported options to the GUI, per UCI spec.
+      // Customize these to match your engine's actual options.
+      SendCommand("option name Hash type spin default 128 min 1 max 2048");
+      SendCommand("option name Ponder type check default false");
+      SendCommand("option name OwnBook type check default true");
 
-      // Talk back to the interface and give it some basic info and tell the interface that
-      // the engine is ready.
-      SendCommand( "id name DeepViolet " dsVersion );
-      SendCommand( "id author Dr. Jay Lindgren" );
-      SendCommand( "uciok" );
-
+      SendCommand("uciok");
    }
-
-   // Turn on debug mode.
-   if ( strstr( argstrCommand, "debug" ) )
+   else if (command == "debug")
    {
-
-/*
-* debug [ on | off ]
-	switch the debug mode of the engine on and off.
-	In debug mode the engine should send additional infos to the GUI, e.g. with the "info string" command,
-	to help debugging, e.g. the commands that the engine has received etc.
-	This mode should be switched off by default and this command can be sent
-	any time, also when the engine is thinking.
-*/
-
-      // scan the names to see what the action is.
-      char strAction[ 256 ];
-      sscanf( argstrCommand, "debug  %s", & strAction );
-
-      // Find the on or off.
-      if ( ! strcmp( strAction, "on" ) )
+      std::string action;
+      ss >> action;
+      if (action == "on") SetDebug(dYes);
+      else SetDebug(dNo);
+   }
+   else if (command == "isready")
+   {
+      SendCommand("readyok");
+   }
+   else if (command == "setoption")
+   {
+      std::string temp, name, value;
+      ss >> temp; // "name"
+      // Loop to read option names that may contain spaces
+      while (ss >> temp && temp != "value")
       {
-         
-         SetDebug( dYes );
-
+         if (!name.empty()) name += " ";
+         name += temp;
       }
-      else
+      // Loop to read option values that may contain spaces
+      while (ss >> temp)
       {
-
-         SetDebug( dNo );
-
+         if (!value.empty()) value += " ";
+         value += temp;
       }
 
-   }
-
-   // Ready, OK! (cheerleader joke)
-   if ( strstr( argstrCommand, "isready" ) )
-   {
-/*
-* isready
-	this is used to synchronize the engine with the GUI. When the GUI has sent a command or
-	multiple commands that can take some time to complete,
-	this command can be used to wait for the engine to be ready again or
-	to ping the engine to find out if it is still alive.
-	E.g. this should be sent after setting the path to the tablebases as this can take some time.
-	This command is also required once before the engine is asked to do any search
-	to wait for the engine to finish initializing.
-	This command must always be answered with "readyok" and can be sent also when the engine is calculating
-	in which case the engine should also immediately answer with "readyok" without stopping the search.
-*/
-      SendCommand( "readyok" );
-
-   }
-
-   // Set an option. Look for the first 9 letters to contain "setoption"
-   if ( strstr( argstrCommand, "setoption" ) )
-   {
-
-      // See which option to set.
-      char strName[ 256 ];
-      char strValue[ 256 ];
-
-      // Scan the values into the new names.
-      sscanf( argstrCommand, "setoption name %s value %s", & strName, & strValue );
-
-      // Switch on the options.
-      if ( ! strcmp( strName, "Hash" ) )
+      if (name == "Hash")
       {
-/*
-* setoption name <id> [value <x>]
-	this is sent to the engine when the user wants to change the internal parameters
-	of the engine. For the "button" type no value is needed.
-	One string will be sent for each parameter and this will only be sent when the engine is waiting.
-	The name and value of the option in <id> should not be case sensitive and can inlude spaces.
-	The substrings "value" and "name" should be avoided in <id> and <x> to allow unambiguous parsing,
-	for example do not use <name> = "draw value".
-	Here are some strings for the example below:
-	   "setoption name Nullmove value true\n"
-      "setoption name Selectivity value 3\n"
-	   "setoption name Style value Risky\n"
-	   "setoption name Clear Hash\n"
-	   "setoption name NalimovPath value c:\chess\tb\4;c:\chess\tb\5\n"
-*/
-         int iSize = 0;
-         //sscanf( iSize, "%d", & strValue );
-         //  - write a routine to resize the hash table here.
-
+         int hash_size_mb = std::stoi(value);
+         // ToDo: Add your logic to resize the transposition table here.
       }
-
+      // Add other options here
    }
-
-   // Register the engine.
-   if ( strstr( argstrCommand, "register" ) )
+   else if (command == "ucinewgame")
    {
-
-/*
-* register
-	this is the command to try to register an engine or to tell the engine that registration
-	will be done later. This command should always be sent if the engine	has sent "registration error"
-	at program startup.
-	The following tokens are allowed:
-	* later
-	   the user doesn't want to register the engine now.
-	* name <x>
-	   the engine should be registered with the name <x>
-	* code <y>
-	   the engine should be registered with the code <y>
-	Example:
-	   "register later"
-	   "register name Stefan MK code 4359874324"
-*/
-
-      SendCommand( "register name Deep Violet" );
-
+      CreateBoard(argsBoard, argsGeneralMoves);
+      InitializeHashTable(); // Reset hash table for a new game
    }
-
-   // Start a new game.
-   if ( strstr( argstrCommand, "ucinewgame" ) )
+   else if (command == "position")
    {
-
-/*      
-* ucinewgame
-   this is sent to the engine when the next search (started with "position" and "go") will be from
-   a different game. This can be a new game the engine should play or a new game it should analyse but
-   also the next position from a testsuite with positions only.
-   If the GUI hasn't sent a "ucinewgame" before the first "position" command, the engine shouldn't
-   expect any further ucinewgame commands as the GUI is probably not supporting the ucinewgame command.
-   So the engine should not rely on this command even though all new GUIs should support it.
-   As the engine's reaction to "ucinewgame" can take some time the GUI should always send "isready"
-   after "ucinewgame" to wait for the engine to finish its operation.
-*/
-
-      // Reset the board, hard.
-      CreateBoard( argsBoard,
-                   argsGeneralMoves ); 
-      
-      // Set some global parameters for this game.
-      //SetInitialParameters();
-
-      // Initialize the hash table.
-      InitializeHashTable();
-
-      // We are ready to return.
-      return;
-
+      PositionCommand(argstrCommand, argsBoard, argsGeneralMoves);
    }
-
-
-   // Set up an FEN position.
-   if ( strstr( argstrCommand, "position" ) )
+   else if (command == "go")
    {
-
-      // Set up the FEN and make the moves if there are any.
-      PositionCommand( argstrCommand,
-                       argsBoard,
-                       argsGeneralMoves );
-
-      return;
-
-/*
-* position [fen <fenstring> | startpos ]  moves <move1> .... <movei>
-	set up the position described in fenstring on the internal board and
-	play the moves on the internal chess board.
-	if the game was played  from the start position the string "startpos" will be sent
-	Note: no "new" command is needed. However, if this position is from a different game than
-	the last position sent to the engine, the GUI should have sent a "ucinewgame" inbetween.
-*/
-
+      GoCommand(argstrCommand, argsBoard, argsGeneralMoves);
    }
-
-   // Do the go
-   if ( strstr( argstrCommand, "go") )
+   else if (command == "stop")
    {
-
-      GoCommand( argstrCommand,
-                 argsBoard,
-                 argsGeneralMoves );
-      return;
-/*      
-* go
-	start calculating on the current position set up with the "position" command.
-	There are a number of commands that can follow this command, all will be sent in the same string.
-	If one command is not sent its value should be interpreted as it would not influence the search.
-	* searchmoves <move1> .... <movei>
-		restrict search to this moves only
-		Example: After "position startpos" and "go infinite searchmoves e2e4 d2d4"
-		the engine should only search the two moves e2e4 and d2d4 in the initial position.
-	* ponder
-		start searching in pondering mode.
-		Do not exit the search in ponder mode, even if it's mate!
-		This means that the last move sent in in the position string is the ponder move.
-		The engine can do what it wants to do, but after a "ponderhit" command
-		it should execute the suggested move to ponder on. This means that the ponder move sent by
-		the GUI can be interpreted as a recommendation about which move to ponder. However, if the
-		engine decides to ponder on a different move, it should not display any mainlines as they are
-		likely to be misinterpreted by the GUI because the GUI expects the engine to ponder
-	   on the suggested move.
-	* wtime <x>
-		white has x msec left on the clock
-	* btime <x>
-		black has x msec left on the clock
-	* winc <x>
-		white increment per move in mseconds if x > 0
-	* binc <x>
-		black increment per move in mseconds if x > 0
-	* movestogo <x>
-      there are x moves to the next time control,
-		this will only be sent if x > 0,
-		if you don't get this and get the wtime and btime it's sudden death
-	* depth <x>
-		search x plies only.
-	* nodes <x>
-	   search x nodes only,
-	* mate <x>
-		search for a mate in x moves
-	* movetime <x>
-		search exactly x mseconds
-	* infinite
-		search until the "stop" command. Do not exit the search without being told so in this mode!
-*/
-
-
+      SetStopGo(dStop); // Signal the search to stop
    }
-
-   // Do the stop
-   if (strstr( argstrCommand, "stop" ) )
+   else if (command == "ponderhit")
    {
-
-      // Stop the search.
-      SetStopGo( dStop );
-      return;
-
-/*
-* stop
-	stop calculating as soon as possible,
-	don't forget the "bestmove" and possibly the "ponder" token when finishing the search
-*/      
-
+      // The user made the move we were pondering. Switch to normal search.
+      SetStopGo(dGo);
    }
-   
-   // Ponderhit
-   if ( strstr( argstrCommand, "ponderhit" ) )
+   else if (command == "quit")
    {
-
-      SetStopGo( dGo );
-      return;
-
-/*
-* ponderhit
-	the user has played the expected move. This will be sent if the engine was told to ponder on the same move
-	the user has played. The engine should continue searching but switch from pondering to normal search.
-*/
-
+      SetInterfaceMode(dConsole); // Breaks the main loop in main()
    }
-
-   // Quit
-   if ( strstr( argstrCommand, "quit" ) )
+   else if (command == "printboard") // For your own debugging
    {
-
-   	// quit the program as soon as possible
-      // This breaks the loop back in main and uses that exit coding.
-      SetInterfaceMode( dConsole );       
-      return;
-
+      PrintBoard(argsBoard->mBoard);
    }
-
-   // These commands are for debugging.
-   if ( strstr( argstrCommand, "printboard" ) )
-   {
-
-      PrintBoard( argsBoard->mBoard );
-
-   }
-
 }
 
 //
 //------------------------------------------------------------------
 //
-// Parse through and act upon a "parse command.
+// Rewritten: Parse through and act upon a "position" command using modern C++.
 //
-void PositionCommand( char * argstrCommand,
-                      struct Board * argsBoard,
-                      struct GeneralMove * argsGeneralMoves ) 
+void PositionCommand(std::string argstrCommand, struct Board* argsBoard, struct GeneralMove* argsGeneralMoves)
 {
+   std::stringstream ss(argstrCommand);
+   std::string token;
+   ss >> token; // Consume "position"
 
-   char * pFENPosition;
-   char * pMovePosition;
-   char * pStartPosPosition;
-   char * pMove;
-   char strMove[ 8 ];
-   Move vsMoveList[ dNumberOfMoves ];
-   int iMoveNumber = 0;
-
-   // Reset the board, but preserve the book or hash table
-   // Reset the hash if applicable, but at least
-   // reset the hash itself
-   if ( GetIsInBook() == dYes )
+   // Set up the board from FEN or startpos
+   ss >> token;
+   if (token == "startpos")
    {
- 
-      // If in book, don't wipte the book out.
-      SetResetHash( dNo );
-
+      ReadFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1", argsBoard, argsGeneralMoves, 2);
+      ss >> token; // Consume "moves" if it exists
    }
-
-   // Reset the board.
-   CreateBoard( argsBoard,
-                argsGeneralMoves );
-
-   // Make sure the hash is updated in the future if need be.
-   SetResetHash( dYes );
-
-   // Add an end of line to the command
-   strcat( argstrCommand, "\n" ); // hack
-
-   // See if "fen" is in the string.
-   pFENPosition = strstr( argstrCommand,
-                          "fen " );
-   
-   // See if "moves " is in the string.
-   pMovePosition = strstr( argstrCommand,
-                           "moves " );
-
-   // See if we are starting from the starting position.
-   pStartPosPosition = strstr( argstrCommand,
-                               "startpos" );
-
-   // If "fen" was found this parse out the string and set up the board.
-   if ( pFENPosition )
+   else if (token == "fen")
    {
-
-      // Set up the board according to the string.
-      ReadFEN( pFENPosition + 4,
-               argsBoard,
-               argsGeneralMoves,
-               2 );
-
-   }
-   else if ( pStartPosPosition )
-   {
-
-      // Set up according to the basic FEN.
-      if ( GetIsInBook() == dYes )
+      std::string fen;
+      while (ss >> token && token != "moves")
       {
-
-         // Turn off the hash table reset.
-         SetResetHash( dNo );
-
+         fen += token + " ";
       }
-
-      // Reset the book.
-      ReadFEN( argstrCommand,
-               argsBoard,
-               argsGeneralMoves,
-               1 );
-
-      // Make sure the reset the hash table.
-      SetResetHash( dYes );
-
-   }   
-   else
-   {
-
-      // If "fen" was not found, assume the initial position is required.
-      ReadFEN( argstrCommand,
-               argsBoard,
-               argsGeneralMoves,
-               1 );
-
+      ReadFEN(fen.c_str(), argsBoard, argsGeneralMoves, 2);
    }
-   
-   // If "moves " was found, parse and make the moves.
-   if ( pMovePosition )
-   {
-   
-      // Move the end of the word and space "moves "
-      pMove = pMovePosition + 6;
 
-      // Loop to the end of the line.
-      //while ( strcmp( pMove, "\n" ) )
-      while ( strncmp( pMove, "\n", 1 ) )
+   // Process the moves list
+   if (token == "moves")
+   {
+      Move vsMoveList[dNumberOfMoves];
+      int iMoveNumber = -1;
+      char moveStr[10]; // FIX: Create a mutable buffer for FindAlgebraicMove
+
+      while (ss >> token) // Read each move string (e.g., "e2e4")
       {
+         CalculateMoves(vsMoveList, argsBoard, argsGeneralMoves);
 
-         // Copy the to and from square
-         strncpy( strMove, pMove, 4 );
-         pMove = pMove + 4;
+         // FIX: Copy the const string from token.c_str() into the mutable buffer
+         strcpy_s(moveStr, sizeof(moveStr), token.c_str());
 
-         // Terminate the string.
-         strncpy( & strMove[ 4 ], "\0", 1 );
-         
+         FindAlgebraicMove(argsBoard, argsGeneralMoves, moveStr, vsMoveList, &iMoveNumber);
 
-         // Look for a promotion.
-         if ( !( strncmp( pMove, "\n", 1 ) == 0 ) && 
-              !( strncmp( pMove, " ", 1 )  == 0 ) )
+         if (iMoveNumber >= 0 && iMoveNumber < dNumberOfMoves)
          {
-            
-            // Copy the promotion and the piece.
-            strMove[ 4 ] = * pMove++;
-            //strMove[ 5 ] = * pMove++;
-
-            // Terminate the string.
-            strncpy( & strMove[ 5 ], "\0", 1 );
-
+            MakeMove(vsMoveList, argsBoard, argsGeneralMoves, iMoveNumber);
          }
-
-         // Calculate the moves.
-         CalculateMoves( vsMoveList, 
-                         argsBoard, 
-                         argsGeneralMoves );
-
-         // Point an incoming algebraic move to a move in an array
-         FindAlgebraicMove( argsBoard,
-                            argsGeneralMoves,
-                            strMove,
-                            vsMoveList,
-                            & iMoveNumber );
-         
-            //gofDebug << "Hash Before Move = " << GetHash() << endl;
-            //cout     << "Hash Before Move = " << GetHash() << endl;
-            
-
-         // Make the move if we found a legal one.
-         if ( iMoveNumber >= 0 && iMoveNumber < 200 )
-         {
-
-            MakeMove( vsMoveList,
-                      argsBoard,
-                      argsGeneralMoves,
-                      iMoveNumber );
-
-         }
-
-           // gofDebug << "Hash After Move = " << GetHash() << endl << endl;
-            //cout     << "Hash After Move = " << GetHash() << endl << endl;
-
-
-         // Read the rest of the white space.
-         while( !strncmp( pMove, " ", 1 ) )
-         {
-
-            pMove++;
-      
-         }
-
       }
-
    }
-
 }
- 
+
 //
 //--------------------------------------------------------------------------------------------------------------------------------
 //
-void GoCommand( char * argstrCommand,
-                struct Board * argsBoard,
-                struct GeneralMove * argsGeneralMoves )
+// Rewritten: Parse through and act upon a "go" command using modern C++.
+//
+void GoCommand(std::string argstrCommand, struct Board* argsBoard, struct GeneralMove* argsGeneralMoves)
 {
-   // Debut the inputs.
-   assert( argstrCommand >= 0 );
-   assert( argsBoard >= 0 );
-   assert( argsGeneralMoves >= 0 );
+   // Debug the inputs.
+   assert(argsBoard >= 0);
+   assert(argsGeneralMoves >= 0);
 
-   // Delcare some variables.
-   char * pParser;
-   int iMoveNumber = 0;
+   // Use stringstream for robust parsing
+   std::stringstream ss(argstrCommand);
+   std::string token;
+   ss >> token; // Consume "go"
 
-   // The input UCI variables.
-   int wtime     = 0;
-   int btime     = 0;
-   int winc      = 0;
-   int binc      = 0;
-   int movestogo = 0;
-   int depth     = 0;
-   int nodes     = 0;
-   int mate      = 0;
-   int movetime  = 0;
+   // Clear any previous search move restrictions
+   g_searchMoves.clear();
 
-   // Find the first command after go
-   pParser = strstr( argstrCommand, "go" ) + 2;
+   // Default search parameters
+   SetSearchDepth(dInfiniteDepth);
+   SetSearchTimeInMiliSeconds(dInfiniteTime);
 
-   // Debugging.
-   assert( pParser >= 0 );
-
-   // Loop over the white space.
-   while( !strncmp( pParser, " ", 1 ) )
+   // Parse all options from the "go" string
+   while (ss >> token)
    {
-
-      // Move the parser forward one space.
-      pParser++;
-      
+      if (token == "wtime") ss >> token, SetWhiteTime(std::stoi(token));
+      else if (token == "btime") ss >> token, SetBlackTime(std::stoi(token));
+      else if (token == "winc") ss >> token, SetWhiteIncrementalTime(std::stoi(token));
+      else if (token == "binc") ss >> token, SetBlackIncrementalTime(std::stoi(token));
+      else if (token == "movestogo") ss >> token, SetMovesToGo(std::stoi(token));
+      else if (token == "depth")
+      {
+         ss >> token;
+         SetSearchDepth(std::stoi(token));
+         SetSearchTimeInMiliSeconds(dInfiniteTime); // Depth search overrides time
+      }
+      else if (token == "nodes")
+      {
+         ss >> token;
+         SetNodes(std::stoll(token)); // Using stoll for long long
+      }
+      else if (token == "mate") ss >> token, SetMate(std::stoi(token));
+      else if (token == "movetime")
+      {
+         ss >> token;
+         SetSearchTimeInMiliSeconds(std::stoi(token));
+         SetSearchDepth(dInfiniteDepth); // Movetime search overrides depth
+      }
+      else if (token == "infinite")
+      {
+         SetUseOpeningBook(dNo);
+         SetSearchDepth(dInfiniteDepth);
+         SetSearchTimeInMiliSeconds(dInfiniteTime);
+      }
+      else if (token == "ponder")
+      {
+         SetPonder(dYes);
+      }
+      else if (token == "searchmoves")
+      {
+         // New: Correctly parse the list of moves to search
+         while (ss >> token)
+         {
+            g_searchMoves.push_back(token);
+         }
+      }
    }
 
-   // Get the initial time from the clock.
+   // --- Time Management ---
+   if (GetSearchDepth() == dInfiniteDepth && GetSearchTimeInMiliSeconds() == dInfiniteTime && GetNodes() == 0)
+   {
+      if (argsBoard->siColorToMove == dWhite)
+      {
+         SetComputerColor(dComputerWhite);
+      }
+      else
+      {
+         SetComputerColor(dComputerBlack);
+      }
+      CalculateTimeForMove(argsBoard);
+   }
+
+   // --- Start Search ---
    SetSearchStartTime();
-   SetNodes( 0 );
+   SetStopGo(dGo); // Signal that the search should start
 
-   // Switch on the potential elements
-   if ( strstr( pParser, "movestogo" ) )
-   {
-
-      // Move to the next space and extract the depth of the search.
-      pParser = strstr( argstrCommand, "movestogo" ) + 9;
-
-      // Convert the time to an integer.
-      movestogo = atoi( pParser );
-
-      // Set the moves to go until the next time control.
-      SetMovesToGo( movestogo );
-
-   } 
-   if ( strstr( argstrCommand, "binc" ) )
-   {
-
-      // Move to the next space and extract the black incremental time.
-      pParser = strstr( argstrCommand, "binc" ) + 4;
-
-      // Convert the time to an integer.
-      binc = atoi( pParser );
-
-      // Set the incremental time
-      SetBlackIncrementalTime( binc );
-
-      // Set the depth just in case
-      SetSearchDepth( dInfiniteDepth );
-
-   } 
-   if ( strstr( argstrCommand, "btime" ) )
-   {
-
-      // Move to the next space and extract the black time.
-      pParser = strstr( argstrCommand, "btime" ) + 5;
-
-      // Convert the time to an integer.
-      btime = atoi( pParser );
-
-      // Set the black time
-      SetBlackTime( btime );
-
-      // Set the depth just in case
-      SetSearchDepth( dInfiniteDepth );
-
-      // Calculate the time for the move.
-      if ( argsBoard->siColorToMove == dBlack )
-      {
-
-         // Calculate the search time.
-         CalculateTimeForMove( argsBoard );
-
-      }
-
-   } 
-   if ( strstr( argstrCommand, "movetime" ) )
-   {
-
-      // Move to the next space and extract the move time.
-      pParser = strstr( argstrCommand, "movetime" ) + 8;
-
-      // Convert the time to an integer.
-      movetime = atoi( pParser );
-
-      // Set the move time
-      SetSearchTimeInMiliSeconds( movetime );
-
-      // Set the depth just in case
-      SetSearchDepth( dInfiniteDepth );
-
-   } 
-   if ( strstr( argstrCommand, "winc" ) )
-   {
-
-      // Move to the next space and extract the white incremental time.
-      pParser = strstr( argstrCommand, "winc" ) + 4;
-
-      // Convert the time to an integer.
-      winc = atoi( pParser );
-
-      // Set the white incremental time
-      SetWhiteIncrementalTime( winc );
-
-      // Set the depth just in case
-      SetSearchDepth( dInfiniteDepth );
-
-   } 
-   if ( strstr( argstrCommand, "wtime" ) )
-   {
-
-      // Move to the next space and extract the white time.
-      pParser = strstr( argstrCommand, "wtime" ) + 5;
-
-      // Convert the time to an integer.
-      wtime = atoi( pParser );
-
-      // Set the white time
-      SetWhiteTime( wtime );
-
-      // Set the depth just in case
-      SetSearchDepth( dInfiniteDepth );
-
-      // Calculate the time for the move.
-      if ( argsBoard->siColorToMove == dWhite )
-      {
-
-         // Calculate the search time.
-         CalculateTimeForMove( argsBoard );
-
-      }
-
-   } 
-   if ( strstr( pParser, "depth" ) )
-   {
-
-      // Move to the next space and extract the depth of the search.
-      pParser = strstr( argstrCommand, "depth" ) + 5;
-
-      // Loop over the white space.
-      while( !strncmp( pParser, " ", 1 ) )
-      {
-
-         // Advance the parser one space.
-         pParser++;
-         
-      }
-
-      // Convert the time to an integer.
-      depth = atoi( pParser );
-
-      // Set the search depth.
-      SetSearchDepth( depth );
-
-      // Set the search time.
-      SetSearchTimeInMiliSeconds( dInfiniteTime );
-
-   } 
-   if ( strstr( pParser, "infinite" ) )
-   {
-
-      // Move to the next space and extract the depth of the search.
-      pParser = strstr( argstrCommand, "infinite" ) + 8;
-
-      // Convert the time to an integer.
-      depth = atoi( pParser );
-
-
-      // Step out of book.
-      SetUseOpeningBook( dNo ); 
-
-      // Set the search depth.
-      SetSearchDepth( dInfiniteDepth );
-
-      // Set the search time.
-      SetSearchTimeInMiliSeconds( dInfiniteTime );
-
-   } 
-   if ( strstr( pParser, "nodes" ) )
-   {
-
-      // Move to the next space and extract the depth of the search.
-      pParser = strstr( argstrCommand, "nodes" ) + 5;
-
-      // Convert the time to an integer.
-      nodes = atoi( pParser );
-
-      // Set the moves to go until the next time control.
-      SetNodes( nodes );
-
-   } 
-   if ( strstr( pParser, "mate" ) )
-   {
-
-      // Move to the next space and extract the depth of the search.
-      pParser = strstr( argstrCommand, "mate" ) + 4;
-
-      // Convert the time to an integer.
-      mate = atoi( pParser );
-
-      // Set the moves to go until the next time control.
-      SetMate( mate );
-      SetSearchDepth( mate + 3 );
-
-   } 
-   if ( strstr( pParser, "searchmoves" ) )
-   {
-
-      // Move to the next space and extract the depth of the search.
-      pParser = strstr( argstrCommand, "searchmoves" ) + 11;
-
-   } 
-   if ( strstr( pParser, "ponder" ) )
-   {
-
-      // Move to the next space and extract the depth of the search.
-      pParser = strstr( argstrCommand, "searchmoves" ) + 11;
-
-      // Set pondering on to preserve the Multi PV
-      SetPonder( dYes ); // dYes dNo
-
-
-      // Set the search to go
-      SetStopGo( dGo );
-
-   } 
-
-   // Look for things that could be wrong.
-   if ( GetSearchTimeInMiliSeconds() <= 0 )
-   {
-
-      // Set the search time
-      SetSearchTimeInMiliSeconds( 1000 );
-
-   }
-   if ( GetSearchDepth() < 0 )
-   {
-  
-      // Set the search depth.
-      SetSearchDepth( 3 );
-
-   }
-   if ( argsBoard->siColorToMove == dWhite )
-   {
-
-      SetComputerColor( dComputerWhite );  // dComputerWhite dComputerBlack
-
-   }
-   else
-   {
-
-      SetComputerColor( dComputerBlack );
-
-   }
-
-   // Get a computer move.
-   // The move will be sent in the below routine.
-   ComputerMove( argsBoard,
-                 argsGeneralMoves );
-
+   ComputerMove(argsBoard, argsGeneralMoves);
 }
-
-
- 
