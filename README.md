@@ -1,4 +1,4 @@
-![Violet logo](assets/images/violet-logo.png)
+![Violet logo](Violet%20Logo.png)
 # Violet
 The Violet chess engine
 
