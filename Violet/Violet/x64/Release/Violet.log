@@ -1,0 +1,24 @@
+﻿  Bitboard.cpp
+  Evaluation.cpp
+  FrontEndInterface.cpp
+  GameControl.cpp
+C:\Users\jayli\Desktop\Violet\SRC\SRC\GameControl.cpp(1514,23): warning C4244: '=': conversion from '__int64' to 'int', possible loss of data
+  GeneralMoves.cpp
+  HashTable.cpp
+  main.cpp
+  MoveOrder.cpp
+  Moves.cpp
+  OneOffUtilities.cpp
+C:\Users\jayli\Desktop\Violet\SRC\SRC\OneOffUtilities.cpp(868,20): warning C4267: 'initializing': conversion from 'size_t' to 'int', possible loss of data
+  OpeningBook.cpp
+  Search.cpp
+C:\Users\jayli\Desktop\Violet\SRC\SRC\Search.cpp(1108,25): warning C4018: '<': signed/unsigned mismatch
+C:\Users\jayli\Desktop\Violet\SRC\SRC\Search.cpp(1257,32): warning C4305: 'argument': truncation from '__int64' to 'int'
+C:\Users\jayli\Desktop\Violet\SRC\SRC\Search.cpp(1257,32): warning C4309: 'argument': truncation of constant value
+  TestSuites.cpp
+  Tuning.cpp
+  Generating code
+  Previous IPDB not found, fall back to full compilation.
+  All 653 functions were compiled because no usable IPDB/IOBJ from previous compilation was found.
+  Finished generating code
+  Violet.vcxproj -> C:\Users\jayli\Desktop\Violet\Violet\x64\Release\Violet.exe

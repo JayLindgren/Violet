@@ -1,0 +1,14 @@
+# Visual Studio
+.vs/
+Violet/.vs/
+
+# C++ / Build output
+*.ipch
+*.pch
+*.suo
+*.user
+[Bb]in/
+[Dd]ebug/
+[Rr]elease/
+x64/
+obj/
