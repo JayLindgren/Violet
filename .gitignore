@@ -1,0 +1,21 @@
+# Build directories
+bin/
+obj/
+x64/
+Debug/
+Release/
+
+# MSVC specific
+*.vcxproj.user
+*.sln
+*.db
+*.pdb
+*.ilk
+
+# Violet Specific
+FEN.txt
+aspiration_results.csv
+Notes.cpp
+build_log.txt
+fix_comments.py
+.clang-format
